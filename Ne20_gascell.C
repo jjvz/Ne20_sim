@@ -21,12 +21,11 @@
 #define PI 3.141592654
 #define muentries 40	// number of att. coeff. entries in mu.dat file
 #define nSi 4 
-#define mulable "/home/jjvz/codes/montecarlo/mu.dat"
-//#define mulable "mu.dat"
+#define mulable   "mu.dat"
 #define gamlable1 "ne20-gammas.dat"
 #define gamlable2 "o16-gammas.dat"
 #define gamlable3 "c12-gammas.dat"
-#define loglable "ne20-gammas-log.dat"
+#define loglable  "ne20-gammas-log.dat"
 
 #define XFWHM   0.08		// fwhm (in MeV) of focal plane x-axis
 #define Res     60        	// resolution % (float) of Hagar
@@ -34,7 +33,7 @@
 #define H0      11.9      	// radius of detector face (cm)(float)
 #define maxdx   35.6       	// depth of detector (cm) (float)
 #define maxkan  18000       // number of channels (integer)
-#define logflag 1
+#define logflag true
 #define NG		500			// # gamma evrnts to print in logfile
 #define numlines1	71		// # states for Ne20 datfile
 #define numlines2	14		// # states for O16 datfile
@@ -223,7 +222,7 @@ void ne20_gascell(Int_t NN=20000)
     
 //	valarray<int> myvalarray(numgam1,numlines1);
 // ****************************************************************************************
-    if(logflag==1) logfile=fopen(loglable, "w");
+    if(logflag) logfile=fopen(loglable, "w");
 
 // ******************  16O states: **********************************    
     Float_t cent2[numlines2], gam2[numlines2][3], gamI2[numlines2][3];
@@ -881,7 +880,7 @@ void ne20_gascell(Int_t NN=20000)
   c2->cd(2);
   hEvsThet180->Draw("col"); 
 //  c2->Update();
-  if(logflag==1) fclose(logfile);
+  if(logflag) fclose(logfile);
 
   c1->Write();
   f1->Write();
@@ -1078,7 +1077,7 @@ void MCRoot(Float_t E0, Int_t pindx)
 	}
 	Edx=0.;
 
-    if(logflag==1 && b_Ngam<NG) {
+    if(logflag && b_Ngam<NG) {
     	fprintf(logfile, "Event: %d , gam evt: %d E* = %.3f MeV, gamma %.0f detected with Energy = %.0f keV \n", b_N0, b_Ngam, b_energSA, b_gamraw, b_sumenerg);
     	fprintf(logfile, "_________________________________________________________________________________ \n");
     }
@@ -1140,7 +1139,7 @@ void INTERACT()
             // - thus peak at E-1022. If only one escapes, extra 511 deposited in detector - peak at 
             // E-1022+511. If both absorbed - full energy deposited  - full energy peak.
         ++numpaar;	// new energy of (e-,e+) pair to be absorbed... or not. The e- takes ~half energy and is usually immediately absorbed and constitutes Edx. 
-        if(logflag==1 && b_Ngam<NG) fprintf(logfile, "paar: E = %.0f; numpaar = %d\n", E, numpaar);
+        if(logflag && b_Ngam<NG) fprintf(logfile, "paar: E = %.0f; numpaar = %d\n", E, numpaar);
 
         Edx=Edx+convolv((E-1022.)/2.);	 	// electron absorbed taking half the remainder (E0-1022):
         Edx=Edx+convolv((E-1022.)/2.);		// positron kinetic energy absorbed as it is slowed down before being annihilated:
@@ -1173,7 +1172,7 @@ float COMPTON()
 
     Edx=Edx+convolv(Ee);
     b_compt=Edx;    // CAREFULL!! - I'm overwriting previous comptons during multiple compt. scat.
-    if(logflag==1 && b_Ngam<NG) {
+    if(logflag && b_Ngam<NG) {
     	fprintf(logfile, "compt. scatt. of %.0f (%d) at thet=%.2f deg, phi=%.2f deg; numcomp = %d\n", E, b_annihal, theta_f*180./PI, phi*180./PI, numcomp);
     	fprintf(logfile, "\tEgam out = %.0f keV (%d), %.0f keV deposited\n", Egam, b_annihal, Ee);         
     }
