@@ -1,0 +1,6 @@
+// Data file for gammas from C12
+// E[MeV]	#gammas	Egam1[keV] I1	Egam2	I2	Egam3	I3	
+0.00	0	0	0	0	0	0	0
+4.4389	1	4438.	1.	0	0	0	0
+7.6542	1	3214.	1.	0	0	0	0
+9.641	1	9641.	1.	0	0	0	0
