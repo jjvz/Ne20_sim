@@ -1,4 +1,4 @@
-0
+1
 0
 0
 0
@@ -24,3 +24,16 @@
 10941.000000 159.000000
 15092.000000 159.000000
 6208.000000 170.000000
+
+// Info:
+line 1. should rekord file be created? 0=no, 1=yes
+line 2. should log file be created? 0=no, 1=yes //note, this will slow down the sim tremendously!
+line 3. should graph be plotted online? 0=no, 1=yes //note, this will slow down the sim tremendously!
+line 4. should diagram be drawn? 0=no, 1=yes  //note, this will slow down the sim tremendously!
+line 5. resolution % (int)
+line 6. distance from source (cm) (float)
+line 7. radius of detector face (cm) (float)
+line 8. depth of detector (cm) (float)
+line 9. number of channels (integer)
+line 10. number of monoenergy gammas (int)
+line 11. for(l=1; l<=lyne; ++l) E0[l-1], I[l-1]  //energy(int, keV) and rel. abundance(float)
