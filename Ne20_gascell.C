@@ -122,7 +122,7 @@ class Box
 
     TFile *f1=new TFile("Ne20.root","RECREATE"); 
     TTree *t1=new TTree("DATA","Tree data for good events");
-    TTree *t2=new TTree("MCDATA","Tree data for good gamma events");
+//    TTree *t2=new TTree("MCDATA","Tree data for good gamma events");
 
     TH1F *h_GamThet   = new TH1F("h_GamThet","Scatter angle",1000,0,180);
     TH1F *h_GamDist   = new TH1F("h_GamDist","Free Paths",1000,0,maxdx);
@@ -155,21 +155,21 @@ void ne20_gascell(Int_t NN=20000)
     
     memset(&StripPos, 0, sizeof(StripPos));
 
-    t2->Branch("isgam",&b_isgam,"b_isgam/I");
-    t2->Branch("esc",&b_esc,"b_esc/I");
-    t2->Branch("comp1",&b_comp1,"b_comp1/I");
-    t2->Branch("fot1",&b_fot1,"b_fot1/I");
-    t2->Branch("fot2",&b_fot2,"b_fot2/I");
-    t2->Branch("dist",&b_dist,"b_dist/D");
-    t2->Branch("gthet",&b_gthet,"b_gthet/D");
-    t2->Branch("gthet0",&b_gthet0,"b_gthet0/D");
-    t2->Branch("foto",&b_foto,"foto/D");
-    t2->Branch("compt",&b_compt,"compt/D");
-    t2->Branch("paar",&b_paar,"paar/D");
-    t2->Branch("annihal",&b_annihal,"annihal/I");
-    t2->Branch("sumenerg",&b_sumenerg,"b_sumenerg/D");
-    t2->Branch("gamraw",&b_gamraw,"b_gamraw/D");
-    t2->Branch("gamEnerg",b_gamEnerg,"b_gamEnerg[3]/D");
+    t1->Branch("isgam",&b_isgam,"b_isgam/I");
+    t1->Branch("esc",&b_esc,"b_esc/I");
+    t1->Branch("comp1",&b_comp1,"b_comp1/I");
+    t1->Branch("fot1",&b_fot1,"b_fot1/I");
+    t1->Branch("fot2",&b_fot2,"b_fot2/I");
+    t1->Branch("dist",&b_dist,"b_dist/D");
+    t1->Branch("gthet",&b_gthet,"b_gthet/D");
+    t1->Branch("gthet0",&b_gthet0,"b_gthet0/D");
+    t1->Branch("foto",&b_foto,"foto/D");
+    t1->Branch("compt",&b_compt,"compt/D");
+    t1->Branch("paar",&b_paar,"paar/D");
+    t1->Branch("annihal",&b_annihal,"annihal/I");
+    t1->Branch("sumenerg",&b_sumenerg,"b_sumenerg/D");
+    t1->Branch("gamraw",&b_gamraw,"b_gamraw/D");
+    t1->Branch("gamEnerg",b_gamEnerg,"b_gamEnerg[3]/D");
 
 // **************** Read Mu file (att. coefficients) **************************************
 // Data file with gamma ray mass att. coeff's (in cm2/g): 0=Compt.; 1=Photo; 2=Pair; 3=Total 
@@ -834,7 +834,7 @@ void ne20_gascell(Int_t NN=20000)
 //---------------------------------------------------------------------------------------
 */
             t1->Fill();         // I fill t1 here to record only valid events.
-            t2->Fill();         // I fill t1 here to record only valid events.
+//            t2->Fill();         // I fill t1 here to record only valid events.
             if(numscat==1234 && flag==0) print_evt();
 	ZeroTTreeVariablesMC();
 
