@@ -33,11 +33,14 @@
 #define H0      11.9      	// radius of detector face (cm)(float)
 #define maxdx   35.6       	// depth of detector (cm) (float)
 #define maxkan  18000       // number of channels (integer)
-#define logflag true
+//#define logflag false		// ...warning... selecting this as "true" may take a long time to run...
 #define NG		500			// # gamma evrnts to print in logfile
 #define numlines1	71		// # states for Ne20 datfile
 #define numlines2	14		// # states for O16 datfile
 #define numlines3	4		// # states for C12 datfile
+
+//#define PRNT_DIAG		//uncomment to print scatter diagram 
+#define LOG_FILE
 
 FILE *gamfile1; 
 FILE *gamfile2; 
@@ -90,7 +93,7 @@ bool INSIDE = true;
 // ROOT TREE VARIABLE
 Int_t b_N0=-10, b_Nbreak=-10, b_Si1=0, b_Si2=0, b_Si3=0, b_Si4=0, b_Si5=0, b_Si6=0;
 Int_t Sis1[16], Sis2[16], Sis3[16], Sis4[16], Sis5[16], Sis6[16];
-Float_t b_energA=-10., b_energSA=-10., b_Excit=-10., b_energSB=-10., b_energB=-10., b_energa=-10., b_hoeka=-10., b_hoekB=-10.;
+Float_t b_energA=-10., b_energSA=-10., b_Ex=-10., b_energSB=-10., b_energB=-10., b_energa=-10., b_hoeka=-10., b_hoekB=-10.;
 Float_t b_energBraw=-10., b_energaraw=-10., b_posxa=0, b_posxB=0, b_posya=0, b_posyB=0;
 Float_t energy[2], hoek[2], StripPos[50][2], b_Xpos=-1, b_Qsep=0.;
 Int_t b_Ne20=0, b_O16=0, b_C12=0, b_Ne20p=0;
@@ -222,8 +225,9 @@ void ne20_gascell(Int_t NN=20000)
     
 //	valarray<int> myvalarray(numgam1,numlines1);
 // ****************************************************************************************
+#ifdef LOG_FILE
     if(logflag) logfile=fopen(loglable, "w");
-
+#endif
 // ******************  16O states: **********************************    
     Float_t cent2[numlines2], gam2[numlines2][3], gamI2[numlines2][3];
 //    Float_t sig2[numlines2]={0.94,0.081,0.014,0.287,0.48,0.322,0.261,0.198,0.069,0.062,0.085};
@@ -307,7 +311,7 @@ void ne20_gascell(Int_t NN=20000)
     t1->Branch("energA",&b_energA,"b_energA/F");
     t1->Branch("energSA",&b_energSA,"b_energSA/F");
     t1->Branch("Qsep",&b_Qsep,"b_Qsep/F");
-    t1->Branch("Excit",&b_Excit,"b_Excit/F");
+    t1->Branch("Ex",&b_Ex,"b_Ex/F");
     t1->Branch("energSB",&b_energSB,"b_energSB/F");
     t1->Branch("energy",energy,"energy[2]/F");
     t1->Branch("hoek",hoek,"hoek[2]/F");
@@ -327,9 +331,11 @@ void ne20_gascell(Int_t NN=20000)
     t1->Branch("O16",&b_O16,"b_O16/I");
     t1->Branch("C12",&b_C12,"b_C12/I");
 
-    TCanvas *c1=new TCanvas("c1","Scattering Geometry",900,480,660,350);
-    TCanvas *c2=new TCanvas("c2","Data distribution",900,80,660,350);
-    c2->Divide(2,1);
+#ifdef PRNT_DIAG
+	TCanvas *c1=new TCanvas("c1","Scattering Geometry",900,480,660,350);
+#endif
+//    TCanvas *c2=new TCanvas("c2","Data distribution",900,80,660,350);
+//    c2->Divide(2,1);
     
     TH1F *hX1pos = new TH1F("hX1pos","Simulated FP position spectrum; position, x (mm); counts",2000,0,800);
     TH1F *hE = new TH1F("hE","Energy of breakup particles; Energy [MeV]; counts",200,0,20);
@@ -355,9 +361,10 @@ void ne20_gascell(Int_t NN=20000)
     hEvsThet180->GetYaxis()->SetTitleOffset(1.5);
     hThetaVsThetB->GetXaxis()->SetTitle("#theta_B [deg]");
     hThetaVsThetB->GetYaxis()->SetTitle("#theta #alpha [deg]");
-    c1->cd();
     
 // *******************Drawing gas cell: ******************************************
+#ifdef PRNT_DIAG
+    c1->cd();
 // Draw Source(origin):
 // TEllipse(x1,y1,r1,r2,phimin,phimax,theta-rotate)
     TEllipse *ellipse = new TEllipse(orgx,orgy,0.005,0.005,0,360,0);
@@ -380,6 +387,7 @@ void ne20_gascell(Int_t NN=20000)
     line->SetLineStyle(3);
     line->Draw();
     c1->Update();
+#endif
     
 // Si1box specification
    Si1box.sx0 = x_start; 
@@ -405,13 +413,15 @@ void ne20_gascell(Int_t NN=20000)
    Si4box.sx1 = Si4box.sx0+SiL;
    Si4box.sy1 = orgy-SiSepY2;
 
+    cout<<"\n ***************** SI DETECTORS SETUP ****************"<<endl;
+    cout<<"Si-1/3: "<<(Si1box.sx0-x0)/Lconv<<" mm to "<<(Si1box.sx1-x0)/Lconv<<" mm from gas cell face"<<endl;
+    cout<<"Si-2/4: "<<(Si2box.sx0-x0)/Lconv<<" mm to "<<(Si2box.sx1-x0)/Lconv<<" mm from gas cell face"<<endl;
+
+#ifdef PRNT_DIAG
     TBox *si_det1 = new TBox(Si1box.sx0,Si1box.sy0,Si1box.sx1,Si1box.sy1);
     TBox *si_det2 = new TBox(Si2box.sx0,Si2box.sy0,Si2box.sx1,Si2box.sy1);
     TBox *si_det3 = new TBox(Si3box.sx0,Si3box.sy0,Si3box.sx1,Si3box.sy1);
     TBox *si_det4 = new TBox(Si4box.sx0,Si4box.sy0,Si4box.sx1,Si4box.sy1);
-    cout<<"\n ***************** SI DETECTORS SETUP ****************"<<endl;
-    cout<<"Si-1/3: "<<(Si1box.sx0-x0)/Lconv<<" mm to "<<(Si1box.sx1-x0)/Lconv<<" mm from gas cell face"<<endl;
-    cout<<"Si-2/4: "<<(Si2box.sx0-x0)/Lconv<<" mm to "<<(Si2box.sx1-x0)/Lconv<<" mm from gas cell face"<<endl;
 //    si_det1->SetLineColor(1);
 //    si_det1->SetLineStyle(1);
 //    si_det1->SetLineWidth(1);
@@ -424,6 +434,7 @@ void ne20_gascell(Int_t NN=20000)
     si_det2->Draw();
     si_det4->Draw();
     c1->Update();
+#endif
 
 // *********************************************************
 // Subdivide Si's into 16 strips each, 3mm wide:
@@ -458,11 +469,14 @@ void ne20_gascell(Int_t NN=20000)
     memset(&Sis3, 0, sizeof(Sis3));
     memset(&Sis4, 0, sizeof(Sis4));
 
-    cout <<"\n0%---------25%---------50%----------75%----------100%"<<endl;
+//    cout <<"\n0%---------25%---------50%----------75%----------100%"<<endl;
+    cout << endl;
     srand(time(0));
 
 // **************************************************** START EVENTS *************************************************
-  for(Nj=0; Nj<NN; Nj++) { 
+  for(Nj=0; Nj<NN; Nj++) {
+//  	if(Nj%200==0) cout<<"\r event no.: "<<Nj;
+  	cout<<"\r...progress: "<< 100.*Nj/NN <<"%          ";
     b_N0=Nj;
 
     ZeroTTreeVariables();
@@ -481,7 +495,9 @@ void ne20_gascell(Int_t NN=20000)
         b_Ne20 = 1;
   
        	for(p=0;p<numgam1[indx];p++) {	// do for every gamma of Estar
+       		if(p>2) {printf("error....................... p>3"); break;}
        		rgGam=0.001*(rand()%1001);    		// probability of gamma to be emitted
+       		
    			if(rgGam<=gamI1[indx][p]) MCRoot(gam1[indx][p],p);	// do MCRoot() for gamma energy gam1[][]  
        	}
 
@@ -582,7 +598,7 @@ void ne20_gascell(Int_t NN=20000)
     }        
 // ****************************************************************************************************************
 
-    b_energSA = Estar_A;	//once the gama MC for all targets are done, move earliers assignment here.
+    b_energSA = Estar_A;	//once the gamma MC for all targets are done, move earliers assignment here.
     b_energSB = Estar_B;
     
     E_tot = Estar_A + S_a + E_A - Estar_B;    // E_tot = E_alph + E_B = 15.891;
@@ -598,18 +614,18 @@ void ne20_gascell(Int_t NN=20000)
 // Excitation energy has been selected:
 // **************************************************************************************
 // Now fill excitation energy spectrum: I just invert Xpos calibration, thus retaining shape of peaks
-    if(b_Ne20==1 || b_Ne20p==1) b_Excit = noise(Estar_A,(1-width1[indx])*XFWHM/2.35);	//b_Excit is now broadened statistically
-    else if(b_O16==1) b_Excit = noise(Estar_A,(1-width2[indx])*XFWHM/2.35);	//b_Excit is now broadened statistically
-    else if(b_C12==1) b_Excit = noise(Estar_A,(1-width3[indx])*XFWHM/2.35);	//b_Excit is now broadened statistically
-    hEx->Fill(b_Excit);
-	hEHagarvsEx->Fill(b_Excit,b_gamEnerg[0]);  // here the Excit energies are correct, but may miss showing a few gammas!     
-	hEHagarvsEx->Fill(b_Excit,b_gamEnerg[1]);  // here the Excit energies are correct, but may miss showing a few gammas!     
-	hEHagarvsEx->Fill(b_Excit,b_gamEnerg[2]);  // here the Excit energies are correct, but may miss showing a few gammas!     
-//	hEHagarvsEx->Fill(b_Excit,b_sumenerg);  // here the Excit energies are correct, but may miss showing a few gammas!     
+    if(b_Ne20==1 || b_Ne20p==1) b_Ex = noise(Estar_A,(1-width1[indx])*XFWHM/2.35);	//b_Ex is now broadened statistically
+    else if(b_O16==1) b_Ex = noise(Estar_A,(1-width2[indx])*XFWHM/2.35);	//b_Ex is now broadened statistically
+    else if(b_C12==1) b_Ex = noise(Estar_A,(1-width3[indx])*XFWHM/2.35);	//b_Ex is now broadened statistically
+    hEx->Fill(b_Ex);
+	hEHagarvsEx->Fill(b_Ex,b_gamEnerg[0]);  // here the Ex energies are correct, but may miss showing a few gammas!     
+	hEHagarvsEx->Fill(b_Ex,b_gamEnerg[1]);  // here the Ex energies are correct, but may miss showing a few gammas!     
+	hEHagarvsEx->Fill(b_Ex,b_gamEnerg[2]);  // here the Ex energies are correct, but may miss showing a few gammas!     
+//	hEHagarvsEx->Fill(b_Ex,b_sumenerg);  // here the Ex energies are correct, but may miss showing a few gammas!     
 //	ZeroTTreeVariablesMC();
 // Now fill FP position spectrum (wih calibration)
 //    Xposition = -0.2012*Estar_A*Estar_A - 26.31*Estar_A + 911.35;
-    Xposition = -30.656*b_Excit + 987.52;
+    Xposition = -30.656*b_Ex + 987.52;
 //    Xposition = noise(Xposition,(1-width1[j])*XFWHM/2.35);
     hX1pos->Fill(Xposition);
 
@@ -755,8 +771,8 @@ void ne20_gascell(Int_t NN=20000)
             E_B = noise(E_B, 0.15);
             hEvsThet->Fill(thet*180./PI,E_alph);       // NB! angle_a is 0 - 360 deg.
 // ************ note I convert to keV for Si energies to compare with experiment ***************
-            hESivsEx->Fill(b_Excit,E_alph*1000.);
-            hESivsEx->Fill(b_Excit,E_B*1000.);
+            hESivsEx->Fill(b_Ex,E_alph*1000.);
+            hESivsEx->Fill(b_Ex,E_B*1000.);
             hESivsXpos->Fill(Xposition,E_alph*1000.);
             hESivsXpos->Fill(Xposition,E_B*1000.);
 
@@ -792,7 +808,7 @@ void ne20_gascell(Int_t NN=20000)
             energy[1]= E_B;
             b_energB = E_B;
             b_Nbreak = numscat;        
-            b_Qsep = E_alph*1.25024223 - b_Excit;	// energies in MeV
+            b_Qsep = E_alph*1.25024223 - b_Ex;	// energies in MeV
             hQsep->Fill(b_Qsep);  
 // from E_tot = E* + E_recoil + Q_separation = (E_a + E_B) = E_a + E_a*(M_a/M_B) = E_a*(1.25024223)
 //         e.g. 13.5 + 0.051 - 4.730 = 8.821 --->  8.821 = E_a*(1.25024223)
@@ -801,7 +817,7 @@ void ne20_gascell(Int_t NN=20000)
 // we neglect E_recoil as small, and assume 16O in g.s., i.e. alpha_0
 // 
 // to plot: DataTree->Draw("Qsep>>hQsep","","")
-// and use as cut: DataTree->Draw("energa*1000.:Excit>>hESivsEx","Qsep>-6 && Qsep<-3","col")
+// and use as cut: DataTree->Draw("energa*1000.:Ex>>hESivsEx","Qsep>-6 && Qsep<-3","col")
 /*
 //---------------------------------------------------------------------------------------
     cout<<" ***************** PRINT EVENT ***********************"<<endl;
@@ -835,6 +851,9 @@ void ne20_gascell(Int_t NN=20000)
 */
             t1->Fill();         // I fill t1 here to record only valid events.
 //            t2->Fill();         // I fill t1 here to record only valid events.
+//            if(numscat%500==0 && numscat>100) {
+//            cout<<"Numscat: "<<numscat<<"\tHagar energy (sumenerg) = "<<b_sumenerg<<"\t of gamma "<<b_gamraw<<" at E* = "<<b_energSA<<endl;}
+
             if(numscat==1234 && flag==0) print_evt();
 	ZeroTTreeVariablesMC();
 
@@ -853,6 +872,7 @@ void ne20_gascell(Int_t NN=20000)
         x2B=x1;
         y2B=y1;
     }
+#ifdef PRNT_DIAG
     if(numscat<=100) {       // plots only first 100 detected events
         TEllipse *ellipse = new TEllipse(x1,y1,0.001,0.003,0,360,0);
         ellipse->Draw();
@@ -868,21 +888,27 @@ void ne20_gascell(Int_t NN=20000)
         line_B->Draw();
         c1->Update();       // uncomment to see individual events
     }    
+#endif
 
   }  // end of event
 //**********************************************************************************************************************	
 
   cout<< "\nNumber scattered: "<< numscat << "/"<<NN<<" ("<<100*numscat/NN<<"%)\n"<<endl;
 
-  c2->cd(1);
-  hX->Draw("col");  
+//  c2->cd(1);
+//  hX->Draw("col");  
 //  hE_aB->Draw("col");  
-  c2->cd(2);
-  hEvsThet180->Draw("col"); 
+//  c2->cd(2);
+//  hEvsThet180->Draw("col"); 
 //  c2->Update();
-  if(logflag) fclose(logfile);
 
+#ifdef LOG_FILE
+  if(logflag) fclose(logfile);
+#endif
+
+#ifdef PRNT_DIAG
   c1->Write();
+#endif
   f1->Write();
 
 //  f1->Close();  
@@ -1012,7 +1038,11 @@ void print_evt()
 // selects a random item in array with "cent" elements
 Int_t choose_state(Int_t cent)
 {
-    Float_t ran = 0.001*(rand()%1001);
+    int result=-1;
+    for(result<cent) {
+    	Float_t ran = 0.001*(rand()%1001);
+		result = int(cent*ran);
+		if(int(cent*ran)>cent) 
     return int(cent*ran);
 }
 //---------------------------------------------------------------
@@ -1077,10 +1107,12 @@ void MCRoot(Float_t E0, Int_t pindx)
 	}
 	Edx=0.;
 
+#ifdef LOG_FILE
     if(logflag && b_Ngam<NG) {
     	fprintf(logfile, "Event: %d , gam evt: %d E* = %.3f MeV, gamma %.0f detected with Energy = %.0f keV \n", b_N0, b_Ngam, b_energSA, b_gamraw, b_sumenerg);
     	fprintf(logfile, "_________________________________________________________________________________ \n");
     }
+#endif
     b_gamEnerg[pindx]=b_sumenerg;
 //	t1->Fill();   
 //	ZeroTTreeVariablesMC();
@@ -1104,8 +1136,10 @@ void INTERACT()
         ++numfoto;
         if(b_comp1==0) b_fot1=1;
         else b_fot2=1;
+#ifdef LOG_FILE
   		if(logflag==1 && b_Ngam<NG) 
     		fprintf(logfile, "foto abs.: E = %.0f (%d); numfoto = %d\n", E, b_annihal, numfoto);
+#endif
         Edx=Edx+convolv(E);   // sum energy within plength - convoluted, may also already contain... 
         b_foto=Edx;           // ... previous compton Edx !!!!                     
         if(b_annihal==1) {	// if gamma 1 just interacted, switch to gamma 2
@@ -1139,7 +1173,9 @@ void INTERACT()
             // - thus peak at E-1022. If only one escapes, extra 511 deposited in detector - peak at 
             // E-1022+511. If both absorbed - full energy deposited  - full energy peak.
         ++numpaar;	// new energy of (e-,e+) pair to be absorbed... or not. The e- takes ~half energy and is usually immediately absorbed and constitutes Edx. 
+#ifdef LOG_FILE
         if(logflag && b_Ngam<NG) fprintf(logfile, "paar: E = %.0f; numpaar = %d\n", E, numpaar);
+#endif
 
         Edx=Edx+convolv((E-1022.)/2.);	 	// electron absorbed taking half the remainder (E0-1022):
         Edx=Edx+convolv((E-1022.)/2.);		// positron kinetic energy absorbed as it is slowed down before being annihilated:
@@ -1172,10 +1208,12 @@ float COMPTON()
 
     Edx=Edx+convolv(Ee);
     b_compt=Edx;    // CAREFULL!! - I'm overwriting previous comptons during multiple compt. scat.
+#ifdef LOG_FILE
     if(logflag && b_Ngam<NG) {
     	fprintf(logfile, "compt. scatt. of %.0f (%d) at thet=%.2f deg, phi=%.2f deg; numcomp = %d\n", E, b_annihal, theta_f*180./PI, phi*180./PI, numcomp);
     	fprintf(logfile, "\tEgam out = %.0f keV (%d), %.0f keV deposited\n", Egam, b_annihal, Ee);         
     }
+#endif
     return Egam;   // remember Egam is UNconvoluted (100% resolution)!!
 }
 //---------------------------COMPTON-------------------------------
