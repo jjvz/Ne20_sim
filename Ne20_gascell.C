@@ -17,6 +17,9 @@
 #include <TH2F.h>     
 #include <TTree.h>
 #include <TFile.h>
+#include <TRandom3.h>
+#include <TROOT.h>
+#include <TStyle.h>
 
 #define PI 3.141592654
 #define muentries 40	// number of att. coeff. entries in mu.dat file
@@ -33,20 +36,21 @@
 #define H0      11.9      	// radius of detector face (cm)(float)
 #define maxdx   35.6       	// depth of detector (cm) (float)
 #define maxkan  18000       // number of channels (integer)
-//#define logflag false		// ...warning... selecting this as "true" may take a long time to run...
 #define NG		500			// # gamma evrnts to print in logfile
-#define numlines1	71		// # states for Ne20 datfile
+#define numlines1	69		// # states for Ne20 datfile
 #define numlines2	14		// # states for O16 datfile
 #define numlines3	4		// # states for C12 datfile
 
 //#define PRNT_DIAG		//uncomment to print scatter diagram 
-#define LOG_FILE
+//#define LOG_FILE		//uncomment to write logfile - this may slow down code !!!! 
 
 FILE *gamfile1; 
 FILE *gamfile2; 
 FILE *gamfile3; 
 FILE *mufile;
-FILE *logfile;
+#ifdef LOG_FILE
+  FILE *logfile;
+#endif
 
 /*------------ Constants----------------------------------------------*/
 const int   q_charge=2;
@@ -58,7 +62,7 @@ const float m0=2809.4;
 void MCRoot(Float_t E0, Int_t pindx);
 void INTERACT();
 int round(float x);
-int gooi_dice(float energ, float rho_i, float theta_i);
+//int gooi_dice(float energ, float rho_i, float theta_i);
 int lpos(char *str, char ch);
 float gooi_dice_kn();
 float COMPTON();
@@ -96,7 +100,7 @@ Int_t Sis1[16], Sis2[16], Sis3[16], Sis4[16], Sis5[16], Sis6[16];
 Float_t b_energA=-10., b_energSA=-10., b_Ex=-10., b_energSB=-10., b_energB=-10., b_energa=-10., b_hoeka=-10., b_hoekB=-10.;
 Float_t b_energBraw=-10., b_energaraw=-10., b_posxa=0, b_posxB=0, b_posya=0, b_posyB=0;
 Float_t energy[2], hoek[2], StripPos[50][2], b_Xpos=-1, b_Qsep=0.;
-Int_t b_Ne20=0, b_O16=0, b_C12=0, b_Ne20p=0;
+Int_t b_Ne20=0, b_O16=0, b_C12=0, b_Ne20p=0, b_Ne20Be=0, b_spn=0;
 // general variables for TTree
 Int_t b_Ngam=0;
 Int_t b_isgam=0;
@@ -187,7 +191,7 @@ void ne20_gascell(Int_t NN=20000)
     	fclose (mufile);
     }
     else {
-    	cout<< "ERROR: "<< mulable <<" file does not exist!!!!"<<endl;
+    	std::cout<< "ERROR: "<< mulable <<" file does not exist!!!!"<<std::endl;
     	return;
     }
 // ****************************************************************************************
@@ -196,15 +200,16 @@ void ne20_gascell(Int_t NN=20000)
     Float_t cent1[numlines1], gam1[numlines1][3], gamI1[numlines1][3];
 //    Float_t sig1[18]={0.657,0.362,0.51,0.14,0.143,0.12,0.123,0.692,0.581,0.726,0.695,0.976,0.252,0.304,
 //                        0.017,0.465,0.66,0.327};
-    Float_t Erecoil1[numlines1]={0.000,0.001,0.009,0.011,0.012,0.015,0.015,0.016,0.018,0.021,0.022,0.021,0.023,0.024,0.024,0.026,
-	0.030,0.031,0.032,0.034,0.033,0.034,0.034,0.035,0.036,0.036,0.036,0.038,0.040,0.041,0.043,0.043,0.043,0.044,0.044,0.047,
+    Float_t Erecoil1[numlines1]={0.000,0.001,0.009,0.011,0.012,0.015,0.015,0.016,0.018,0.021,0.022,0.021,0.024,0.026,
+	0.030,0.031,0.032,0.034,0.033,0.034,0.035,0.036,0.036,0.036,0.038,0.040,0.041,0.043,0.043,0.043,0.044,0.044,0.047,
 	0.047,0.049,0.049,0.050,0.049,0.050,0.051,0.052,0.052,0.053,0.053,0.052,0.053,0.053,0.053,0.054,0.055,0.056,0.055,0.055,
-	0.056,0.056,0.057,0.058,0.059,0.060,0.061,0.062,0.064,0.065,0.077,0.079,0.080,0.086,0.098};
-    Float_t width1[numlines1]={0.,0.,0.,0.000028,0.019,0.0082,0.0034,0.0151,0.002,0.8,0.0021,0.019,0.8,0.0032,0.,0.029,0.0003,0.08,
-	0.024,0.045,0.013,0.,0.58,0.,0.175,0.0003,0.04,0.0011,0.046,0.03,0.001,0.001,0.39,0.0373,0.0244,0.03,0.038,0.162,0.048,
+	0.056,0.056,0.057,0.058,0.059,0.060,0.061,0.062,0.064,0.065,0.077,0.079,0.080,0.086,0.098,0.146};
+    Float_t width1[numlines1]={0.,0.,0.,0.000028,0.019,0.0082,0.0034,0.0151,0.002,0.8,0.0021,0.019,0.0032,0.029,0.0003,0.08,
+	0.024,0.045,0.013,0.58,0.,0.175,0.0003,0.04,0.0011,0.046,0.03,0.001,0.001,0.39,0.0373,0.0244,0.03,0.038,0.162,0.048,
 	0.04,0.08,0.053,0.024,0.195,0.024,0.061,0.076,0.012,0.009,0.017,0.08,0.136,0.175,0.00014,0.074,0.0035,0.079,0.07,0.14,
-	0.042,0.033,0.068,0.116,0.025,0.1,0.066,0.035,0.08,0.002,0.086,0.0095};
+	0.042,0.033,0.068,0.116,0.025,0.1,0.066,0.035,0.08,0.002,0.086,0.00950,0.1};
 
+    Int_t spn1[numlines1];
     Int_t numgam1[numlines1];
     memset(&numgam1, 0, sizeof(numgam1));
 
@@ -214,25 +219,26 @@ void ne20_gascell(Int_t NN=20000)
     	fgets(buff, 80, gamfile1);
     	fgets(buff, 80, gamfile1);
     	for(j=0; j<numlines1; j++) {
-        	fscanf(gamfile1,"%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f",&cent1[j],&numgam1[j],&gam1[j][0],&gamI1[j][0],&gam1[j][1],&gamI1[j][1],&gam1[j][2],&gamI1[j][2]);
+        	fscanf(gamfile1,"%f\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f",&cent1[j],&spn1[j],&numgam1[j],&gam1[j][0],&gamI1[j][0],&gam1[j][1],&gamI1[j][1],&gam1[j][2],&gamI1[j][2]);
     	}
     	fclose (gamfile1);
     }
     else {
-    	cout<< "ERROR: "<< gamlable1 <<" file does not exist!!!!"<<endl;
+    	std::cout<< "ERROR: "<< gamlable1 <<" file does not exist!!!!"<<std::endl;
     	return;
     }
     
 //	valarray<int> myvalarray(numgam1,numlines1);
 // ****************************************************************************************
 #ifdef LOG_FILE
-    if(logflag) logfile=fopen(loglable, "w");
+    logfile=fopen(loglable, "w");
 #endif
 // ******************  16O states: **********************************    
     Float_t cent2[numlines2], gam2[numlines2][3], gamI2[numlines2][3];
 //    Float_t sig2[numlines2]={0.94,0.081,0.014,0.287,0.48,0.322,0.261,0.198,0.069,0.062,0.085};
     Float_t Erecoil2[numlines2]={0.,0.013,0.013,0.017,0.017,0.032,0.034,0.046,0.051,0.054,0.060,0.060,0.069,0.081};
     Float_t width2[numlines2]={0.,0.,0.,0.,0.,0.420,0.0006,0.071,0.0015,0.091,0.150,0.130,0.185,0.166};
+    Int_t spn2[numlines2];
     Int_t numgam2[numlines2];
     memset(&numgam2, 0, sizeof(numgam2));
 // *************** Get O16 gamma data, energies, intensities, etc. ***********************  
@@ -241,12 +247,12 @@ void ne20_gascell(Int_t NN=20000)
     	fgets(buff, 80, gamfile2);
     	fgets(buff, 80, gamfile2);
     	for(j=0; j<numlines2; j++) {
-        	fscanf(gamfile2,"%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f",&cent2[j],&numgam2[j],&gam2[j][0],&gamI2[j][0],&gam2[j][1],&gamI2[j][1],&gam2[j][2],&gamI2[j][2]);
+        	fscanf(gamfile2,"%f\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f",&cent2[j],&spn2[j],&numgam2[j],&gam2[j][0],&gamI2[j][0],&gam2[j][1],&gamI2[j][1],&gam2[j][2],&gamI2[j][2]);
     	}
     	fclose (gamfile2);
     }
     else {
-    	cout<< "ERROR: "<< gamlable2 <<" file does not exist!!!!"<<endl;
+    	std::cout<< "ERROR: "<< gamlable2 <<" file does not exist!!!!"<<std::endl;
     	return;
     }
 
@@ -255,6 +261,7 @@ void ne20_gascell(Int_t NN=20000)
 //    Float_t sig3[numlines3]={0.869,0.342,0.987,0.570};
     Float_t Erecoil3[numlines3]={0.,0.009,0.027,0.043};
     Float_t width3[numlines3]={0.,0.00001,0.0085,0.034};
+    Int_t spn3[numlines3];
     Int_t numgam3[numlines3];
     memset(&numgam3, 0, sizeof(numgam3));
 // *************** Get C12 gamma data, energies, intensities, etc. ***********************  
@@ -263,12 +270,12 @@ void ne20_gascell(Int_t NN=20000)
     	fgets(buff, 80, gamfile3);
     	fgets(buff, 80, gamfile3);
     	for(j=0; j<numlines3; j++) {
-        	fscanf(gamfile3,"%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f",&cent3[j],&numgam3[j],&gam3[j][0],&gamI3[j][0],&gam3[j][1],&gamI3[j][1],&gam3[j][2],&gamI3[j][2]);
+        	fscanf(gamfile3,"%f\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f",&cent3[j],&spn3[j],&numgam3[j],&gam3[j][0],&gamI3[j][0],&gam3[j][1],&gamI3[j][1],&gam3[j][2],&gamI3[j][2]);
     	}
     	fclose (gamfile3);
     }
     else {
-    	cout<< "ERROR: "<< gamlable3 <<" file does not exist!!!!"<<endl;
+    	std::cout<< "ERROR: "<< gamlable3 <<" file does not exist!!!!"<<std::endl;
     	return;
     }
     
@@ -328,8 +335,10 @@ void ne20_gascell(Int_t NN=20000)
     t1->Branch("Xpos",&b_Xpos,"b_Xpos/F");
     t1->Branch("Ne20",&b_Ne20,"b_Ne20/I");
     t1->Branch("Ne20p",&b_Ne20p,"b_Ne20p/I");
+    t1->Branch("Ne20Be",&b_Ne20Be,"b_Ne20Be/I");
     t1->Branch("O16",&b_O16,"b_O16/I");
     t1->Branch("C12",&b_C12,"b_C12/I");
+    t1->Branch("spn",&b_spn,"b_spn/I");
 
 #ifdef PRNT_DIAG
 	TCanvas *c1=new TCanvas("c1","Scattering Geometry",900,480,660,350);
@@ -413,9 +422,9 @@ void ne20_gascell(Int_t NN=20000)
    Si4box.sx1 = Si4box.sx0+SiL;
    Si4box.sy1 = orgy-SiSepY2;
 
-    cout<<"\n ***************** SI DETECTORS SETUP ****************"<<endl;
-    cout<<"Si-1/3: "<<(Si1box.sx0-x0)/Lconv<<" mm to "<<(Si1box.sx1-x0)/Lconv<<" mm from gas cell face"<<endl;
-    cout<<"Si-2/4: "<<(Si2box.sx0-x0)/Lconv<<" mm to "<<(Si2box.sx1-x0)/Lconv<<" mm from gas cell face"<<endl;
+    std::cout<<"\n ***************** SI DETECTORS SETUP ****************"<<std::endl;
+    std::cout<<"Si-1/3: "<<(Si1box.sx0-x0)/Lconv<<" mm to "<<(Si1box.sx1-x0)/Lconv<<" mm from gas cell face"<<std::endl;
+    std::cout<<"Si-2/4: "<<(Si2box.sx0-x0)/Lconv<<" mm to "<<(Si2box.sx1-x0)/Lconv<<" mm from gas cell face"<<std::endl;
 
 #ifdef PRNT_DIAG
     TBox *si_det1 = new TBox(Si1box.sx0,Si1box.sy0,Si1box.sx1,Si1box.sy1);
@@ -469,14 +478,14 @@ void ne20_gascell(Int_t NN=20000)
     memset(&Sis3, 0, sizeof(Sis3));
     memset(&Sis4, 0, sizeof(Sis4));
 
-//    cout <<"\n0%---------25%---------50%----------75%----------100%"<<endl;
-    cout << endl;
+    std::cout << std::endl;
     srand(time(0));
 
 // **************************************************** START EVENTS *************************************************
   for(Nj=0; Nj<NN; Nj++) {
-//  	if(Nj%200==0) cout<<"\r event no.: "<<Nj;
-  	cout<<"\r...progress: "<< 100.*Nj/NN <<"%          ";
+//  	if(Nj%200==0) std::cout<<"\r event no.: "<<Nj;
+  	printf("\r...progress: %.2f%%",100.*Nj/NN);
+//  	std::cout<<"\r...progress: "<< 100.*Nj/NN <<"%          ";
     b_N0=Nj;
 
     ZeroTTreeVariables();
@@ -484,7 +493,7 @@ void ne20_gascell(Int_t NN=20000)
     
     rgE=0.001*(rand()%1001);    // choose E* of tgt
 // ********************************* Ne-20 state - a + 16O ***********************************************************
-    if(rgE<=0.8) {
+    if(rgE<=0.75) {
         indx=choose_state(sizeof(cent1)/4);
         E_A = Erecoil1[indx];         // Ne-20 state
         Estar_A = cent1[indx];
@@ -493,6 +502,7 @@ void ne20_gascell(Int_t NN=20000)
         m_a = 4.00260;              // light breakup ion (alpha)
         m_B = 15.99491;             // heavy breakup ion (16O)
         b_Ne20 = 1;
+        b_spn=spn1[indx];
   
        	for(p=0;p<numgam1[indx];p++) {	// do for every gamma of Estar
        		if(p>2) {printf("error....................... p>3"); break;}
@@ -520,14 +530,48 @@ void ne20_gascell(Int_t NN=20000)
 	       	}
         }        
     }
+    // ********************************* Ne-20 state - 8Be + 12C ***********************************************************
+    else if(rgE>0.75 && rgE<=0.8){
+		for(Estar_A=0.;Estar_A<12.0;) {	// repeat search untill E* > E_sep = 11.984 MeV
+			indx=choose_state(sizeof(cent1)/4);	
+		    Estar_A = cent1[indx];
+			//std::cout<<"******* test Estar_A = "<<Estar_A<<std::endl; 
+		}
+        E_A = Erecoil1[indx];         // Ne-20 state
+        Estar_A = cent1[indx];
+        S_a = -11.984;               // separation energy for cluster from tgt
+        m_A = 19.99244;             // breakup nucleus: 19.99244 for 20Ne
+        m_a = 8.00531;              // light breakup ion (8Be)
+        m_B = 12.00000;             // heavy breakup ion (12C)
+        b_Ne20Be = 1;
+        b_spn=spn1[indx];
+  
+       	for(p=0;p<numgam1[indx];p++) {	// do for every gamma of Estar
+       		if(p>2) {printf("error....................... p>3"); break;}
+       		rgGam=0.001*(rand()%1001);    		// probability of gamma to be emitted
+       		
+   			if(rgGam<=gamI1[indx][p]) MCRoot(gam1[indx][p],p);	// do MCRoot() for gamma energy gam1[][]  
+       	}
+
+        rgE2=0.001*(rand()%1001);   // choose E* of heavy ion: 0.0 or 4.44 MeV
+        if(rgE2<=0.67) Estar_B = 0.;
+        else {
+        	Estar_B = 4.43891;        
+        	indx=1;	// state index 1 in data file of heavy ion
+	       	for(p=0;p<numgam3[indx];p++) {	// do for every gamma of Estar
+	       		rgGam=0.001*(rand()%1001);    		// probability of gamma to be emitted
+	   			if(rgGam<=gamI3[indx][p]) MCRoot(gam3[indx][p],p);	// do MCRoot() for gamma energy gam1[][]  
+	       	}
+	    } 
+    }
 // ********************************* Ne-20 state - p + F ***********************************************************
     else if(rgE>0.8 && rgE<=0.9){	// Ne-20 state - breakup into p + F-19
 		for(Estar_A=0.;Estar_A<12.9;) {	// repeat search untill E* > E_sep = 12.844 MeV
 			indx=choose_state(sizeof(cent1)/4);	
 		    Estar_A = cent1[indx];
-			//cout<<"******* test Estar_A = "<<Estar_A<<endl; 
+			//std::cout<<"******* test Estar_A = "<<Estar_A<<std::endl; 
 		}
-		//cout<<"******* Estar_A = "<<Estar_A<<endl; 
+		//std::cout<<"******* Estar_A = "<<Estar_A<<std::endl; 
 		E_A = Erecoil1[indx];        // Ne-20 state - breakup into p + F-19
 		S_a = -12.844;               // separation energy for cluster from tgt
 		m_A = 19.99244;              // breakup nucleus: 19.99244 for 20Ne
@@ -535,6 +579,7 @@ void ne20_gascell(Int_t NN=20000)
 		m_B = 18.998403;             // heavy breakup ion (19F)
 		b_Ne20p = 1;
         Estar_B = 0.;
+        b_spn=spn1[indx];
   
 	    for(p=0;p<numgam1[indx];p++) {	// do for every gamma of Estar
 	    	rgGam=0.001*(rand()%1001);    		// probability of gamma to be emitted
@@ -553,6 +598,7 @@ void ne20_gascell(Int_t NN=20000)
         m_a = 4.00260;              // light breakup ion (alpha)
         m_B = 12.00000;             // heavy breakup ion (12C)
         b_O16 = 1;
+        b_spn=spn2[indx];
   
        	for(p=0;p<numgam2[indx];p++) {	// do for every gamma of Estar
        		rgGam=0.001*(rand()%1001);    		// probability of gamma to be emitted
@@ -589,6 +635,7 @@ void ne20_gascell(Int_t NN=20000)
         m_a = 4.00260;              // light breakup ion (alpha)
         m_B = 8.00531;             // heavy breakup ion (8Be)
         b_C12 = 1;
+        b_spn=spn3[indx];
   
        	for(p=0;p<numgam3[indx];p++) {	// do for every gamma of Estar
        		rgGam=0.001*(rand()%1001);    		// probability of gamma to be emitted
@@ -614,7 +661,7 @@ void ne20_gascell(Int_t NN=20000)
 // Excitation energy has been selected:
 // **************************************************************************************
 // Now fill excitation energy spectrum: I just invert Xpos calibration, thus retaining shape of peaks
-    if(b_Ne20==1 || b_Ne20p==1) b_Ex = noise(Estar_A,(1-width1[indx])*XFWHM/2.35);	//b_Ex is now broadened statistically
+    if(b_Ne20==1 || b_Ne20p==1 || b_Ne20Be==1) b_Ex = noise(Estar_A,(1-width1[indx])*XFWHM/2.35);	//b_Ex is now broadened statistically
     else if(b_O16==1) b_Ex = noise(Estar_A,(1-width2[indx])*XFWHM/2.35);	//b_Ex is now broadened statistically
     else if(b_C12==1) b_Ex = noise(Estar_A,(1-width3[indx])*XFWHM/2.35);	//b_Ex is now broadened statistically
     hEx->Fill(b_Ex);
@@ -640,7 +687,7 @@ void ne20_gascell(Int_t NN=20000)
 // **************************************************************************************
 
 // ************* Scattering (breakup) angle of light ion: **********************
-    thet=PI/180.*0.01*(rand()%36001);     // Random, isotropic [in radians]
+    thet=PI/180.*360*0.001*(rand()%1001);     // Random, isotropic [in radians]
     breakdat = breakup(thet);  // Call this action ONCE to calc breakup kinematics!
     thet_B = breakdat[4]; // Breakup angle of heavy (16O) ion (CLOCKwise from +x-axis) [radians]
     thet_B = noise(thet_B,5.*PI/180.); // ~1mm Si strip width -> ~1 deg
@@ -652,7 +699,7 @@ void ne20_gascell(Int_t NN=20000)
 // If tan(phi)<0, either z2 < 0 or y_si < 0.    
     phi=89.*PI/180.;
     while((phi>PHI_MAX && phi<PI-PHI_MAX) || (phi>PI+PHI_MAX && phi<2*PI-PHI_MAX)) 
-        phi = PI/180.*0.01*(rand()%36001);     // Random, isotropic phi angle [in radians]
+        phi = PI/180.*360*0.001*(rand()%1001);     // Random, isotropic phi angle [in radians]
     z2 = SiSepY1*tan(phi);
 //------------------------------------------------------------------------------
             
@@ -680,7 +727,7 @@ void ne20_gascell(Int_t NN=20000)
         if((x2B>=Si1box.sx0 && x2B<=Si1box.sx1) || (x2B>=Si2box.sx0 && x2B<=Si2box.sx1)) {
 // *********************** Find Si strips triggered: *************************          
             miss=0;            
-//            cout<<"\n begin evt: "<<b_N0<<", xa = "<<(x2-x0)/Lconv<<" x2B = "<<(x2B-x0)/Lconv<<endl;
+//            std::cout<<"\n begin evt: "<<b_N0<<", xa = "<<(x2-x0)/Lconv<<" x2B = "<<(x2B-x0)/Lconv<<std::endl;
             // Si 1/3
             for(Int_t strip=0;strip<16;strip++) {
                 if(x2<=StripPos[strip][1] && x2>=StripPos[strip][0]) {
@@ -688,13 +735,13 @@ void ne20_gascell(Int_t NN=20000)
                         Sis1[strip]=1;
                         b_Si1=1;
                         miss++;
-//                        cout<<"loop si 1-3-a1"<<endl;
+//                        std::cout<<"loop si 1-3-a1"<<std::endl;
                         break;
                     }
                     else if(y2<orgy) {
                         Sis3[strip]=1;
                         b_Si3=1;
-//                        cout<<"loop si 1-3-a2"<<endl;
+//                        std::cout<<"loop si 1-3-a2"<<std::endl;
                         miss++;
                         break;
                     }
@@ -705,14 +752,14 @@ void ne20_gascell(Int_t NN=20000)
                     if(y2B>orgy) {
                         Sis1[strip]=1;
                         b_Si1=1;
-//                        cout<<"loop si 1-3-B1"<<endl;
+//                        std::cout<<"loop si 1-3-B1"<<std::endl;
                         miss++;
                         break;
                     }
                     else if(y2B<orgy) {
                         Sis3[strip]=1;
                         b_Si3=1;
-//                        cout<<"loop si 1-3-B2"<<endl;
+//                        std::cout<<"loop si 1-3-B2"<<std::endl;
                         miss++;
                         break;
                     }
@@ -724,14 +771,14 @@ void ne20_gascell(Int_t NN=20000)
                     if(y2>orgy) {
                         Sis2[strip]=1;
                         b_Si2=1;
-//                        cout<<"loop si 2-4-a1"<<endl;
+//                        std::cout<<"loop si 2-4-a1"<<std::endl;
                         miss++;
                         break;
                     }
                     else if(y2<orgy) {
                         Sis4[strip]=1;
                         b_Si4=1;
-//                        cout<<"loop si 2-4-a2"<<endl;
+//                        std::cout<<"loop si 2-4-a2"<<std::endl;
                         miss++;
                         break;
                     }
@@ -742,20 +789,20 @@ void ne20_gascell(Int_t NN=20000)
                     if(y2B>orgy) {
                         Sis2[strip]=1;
                         b_Si2=1;
-//                        cout<<"loop si 2-4-B1"<<endl;
+//                        std::cout<<"loop si 2-4-B1"<<std::endl;
                         miss++;
                         break;
                     }
                     else if(y2B<orgy) {
                         Sis4[strip]=1;
                         b_Si4=1;
-//                        cout<<"loop si 2-4-B2"<<endl;
+//                        std::cout<<"loop si 2-4-B2"<<std::endl;
                         miss++;
                         break;
                     }
                 }
             }
-//            cout<<"detected: "<<miss<<endl;
+//            std::cout<<"detected: "<<miss<<std::endl;
             if(miss!=2) continue;            
 //******************************************************************************88888888
             numscat++;
@@ -820,39 +867,39 @@ void ne20_gascell(Int_t NN=20000)
 // and use as cut: DataTree->Draw("energa*1000.:Ex>>hESivsEx","Qsep>-6 && Qsep<-3","col")
 /*
 //---------------------------------------------------------------------------------------
-    cout<<" ***************** PRINT EVENT ***********************"<<endl;
-    cout<<"Nbreak = "<<b_Nbreak<<endl;
-    cout<<"pos x0 = "<<posx<<" mm from gas cell face"<<endl;
-    cout<<"pos2 a = ("<<b_posxa<<", "<<b_posya<<") mm from gas cell face, middle"<<endl;
-    cout<<"pos2 B = ("<<b_posxB<<", "<<b_posyB<<") mm from gas cell face, middle"<<endl;
-    cout<<"hoeka = "<<b_hoeka<<endl;
-    cout<<"hoekB = "<<b_hoekB<<endl;
-    cout<<"Si1 = "<<b_Si1<<"\tSi2 = "<<b_Si2<<"\tSi3 = "<<b_Si3<<endl;
-    cout<<"Si4 = "<<b_Si4<<"\tSi5 = "<<b_Si5<<"\tSi6 = "<<b_Si6<<endl;
-    cout<<"Sis1 strips: ";
-    for(Int_t strip=0;strip<16;strip++) cout<<Sis1[strip]<<" ";
-    cout<<endl;
-    cout<<"Sis2 strips: ";
-    for(strip=0;strip<16;strip++) cout<<Sis2[strip]<<" ";
-    cout<<endl;
-    cout<<"Sis3 strips: ";
-    for(strip=0;strip<16;strip++) cout<<Sis3[strip]<<" ";
-    cout<<endl;
-    cout<<"Sis4 strips: ";
-    for(strip=0;strip<16;strip++) cout<<Sis4[strip]<<" ";
-    cout<<endl;
-    cout<<"Sis5 strips: ";
-    for(strip=0;strip<16;strip++) cout<<Sis5[strip]<<" ";
-    cout<<endl;
-    cout<<"Sis6 strips: ";
-    for(strip=0;strip<16;strip++) cout<<Sis6[strip]<<" ";
-    cout<<endl;
+    std::cout<<" ***************** PRINT EVENT ***********************"<<std::endl;
+    std::cout<<"Nbreak = "<<b_Nbreak<<std::endl;
+    std::cout<<"pos x0 = "<<posx<<" mm from gas cell face"<<std::endl;
+    std::cout<<"pos2 a = ("<<b_posxa<<", "<<b_posya<<") mm from gas cell face, middle"<<std::endl;
+    std::cout<<"pos2 B = ("<<b_posxB<<", "<<b_posyB<<") mm from gas cell face, middle"<<std::endl;
+    std::cout<<"hoeka = "<<b_hoeka<<std::endl;
+    std::cout<<"hoekB = "<<b_hoekB<<std::endl;
+    std::cout<<"Si1 = "<<b_Si1<<"\tSi2 = "<<b_Si2<<"\tSi3 = "<<b_Si3<<std::endl;
+    std::cout<<"Si4 = "<<b_Si4<<"\tSi5 = "<<b_Si5<<"\tSi6 = "<<b_Si6<<std::endl;
+    std::cout<<"Sis1 strips: ";
+    for(Int_t strip=0;strip<16;strip++) std::cout<<Sis1[strip]<<" ";
+    std::cout<<std::endl;
+    std::cout<<"Sis2 strips: ";
+    for(strip=0;strip<16;strip++) std::cout<<Sis2[strip]<<" ";
+    std::cout<<std::endl;
+    std::cout<<"Sis3 strips: ";
+    for(strip=0;strip<16;strip++) std::cout<<Sis3[strip]<<" ";
+    std::cout<<std::endl;
+    std::cout<<"Sis4 strips: ";
+    for(strip=0;strip<16;strip++) std::cout<<Sis4[strip]<<" ";
+    std::cout<<std::endl;
+    std::cout<<"Sis5 strips: ";
+    for(strip=0;strip<16;strip++) std::cout<<Sis5[strip]<<" ";
+    std::cout<<std::endl;
+    std::cout<<"Sis6 strips: ";
+    for(strip=0;strip<16;strip++) std::cout<<Sis6[strip]<<" ";
+    std::cout<<std::endl;
 //---------------------------------------------------------------------------------------
 */
             t1->Fill();         // I fill t1 here to record only valid events.
 //            t2->Fill();         // I fill t1 here to record only valid events.
 //            if(numscat%500==0 && numscat>100) {
-//            cout<<"Numscat: "<<numscat<<"\tHagar energy (sumenerg) = "<<b_sumenerg<<"\t of gamma "<<b_gamraw<<" at E* = "<<b_energSA<<endl;}
+//            std::cout<<"Numscat: "<<numscat<<"\tHagar energy (sumenerg) = "<<b_sumenerg<<"\t of gamma "<<b_gamraw<<" at E* = "<<b_energSA<<std::endl;}
 
             if(numscat==1234 && flag==0) print_evt();
 	ZeroTTreeVariablesMC();
@@ -893,7 +940,7 @@ void ne20_gascell(Int_t NN=20000)
   }  // end of event
 //**********************************************************************************************************************	
 
-  cout<< "\nNumber scattered: "<< numscat << "/"<<NN<<" ("<<100*numscat/NN<<"%)\n"<<endl;
+  std::cout<< "\nNumber scattered: "<< numscat << "/"<<NN<<" ("<<100*numscat/NN<<"%)\n"<<std::endl;
 
 //  c2->cd(1);
 //  hX->Draw("col");  
@@ -903,7 +950,7 @@ void ne20_gascell(Int_t NN=20000)
 //  c2->Update();
 
 #ifdef LOG_FILE
-  if(logflag) fclose(logfile);
+  fclose(logfile);
 #endif
 
 #ifdef PRNT_DIAG
@@ -933,8 +980,8 @@ Float_t *breakup(Float_t angl_a)
     alpha = 2*p_A*cos(angl_a);
     det = 4*p_A*p_A*cos(angl_a)*cos(angl_a) - 4*(1+m_B/m_a)*(p_A*p_A-2*m_B*E_tot);
     if(det<0) {
-        cout<<"ERROR - negative determinant - check kinematics!..."<<endl;
-        return 0;
+        std::cout<<"ERROR 1 - negative determinant - check kinematics!..."<<std::endl;
+        det=0;
     }
     else beta = sqrt(det);
 // Found beta always > alpha, i.e. always use p_a = alpha + beta     
@@ -945,8 +992,8 @@ Float_t *breakup(Float_t angl_a)
     E_alph = p_a*p_a/2/m_a;
     E_B = E_tot - E_alph;          // def: E_tot = E_alph + E_B
     if(E_B<0) {
-        cout<<"ERROR - negative determinant - check kinematics!..."<<endl;
-        return 0;
+        std::cout<<"ERROR 2 - negative energy - check kinematics!..."<<std::endl;
+        E_B=0;
     }
     else p_B = sqrt(2*m_B*E_B);
     angl_B = asin(p_a/p_B*sin(angl_a));     // breakup angle of heavy ion, CLOCKWISE from +x-axis
@@ -992,57 +1039,55 @@ void ZeroTTreeVariables()
     b_O16=0;
     b_C12=0;
     b_Ne20p=0;
+    b_Ne20Be=0;
     b_Qsep=0;
 
 }
 //--------------- PRINT EVENT -----------------------------------
 void print_evt()
 {
-    cout<<" ***************** PRINT EVENT ***********************"<<endl;
-    cout<<"N0 = "<<b_N0<<endl;
-    cout<<"Nbreak = "<<b_Nbreak<<endl;
-    cout<<"pos x0 = "<<posx<<" mm from gas cell face"<<endl;
-    cout<<"pos2 a = ("<<b_posxa<<", "<<b_posya<<") mm from gas cell face, middle"<<endl;
-    cout<<"pos2 B = ("<<b_posxB<<", "<<b_posyB<<") mm from gas cell face, middle"<<endl;
-    cout<<"hoeka = "<<b_hoeka<<endl;
-    cout<<"hoekB = "<<b_hoekB<<endl;
-    cout<<"Si1 = "<<b_Si1<<"\tSi2 = "<<b_Si2<<endl;
-    cout<<"Si3 = "<<b_Si3<<"\tSi4 = "<<b_Si4<<endl;
-    cout<<"Sis1 strips: ";
-    for(Int_t strip=0;strip<16;strip++) cout<<Sis1[strip]<<" ";
-    cout<<endl;
-    cout<<"Sis2 strips: ";
-    for(Int_t strip=0;strip<16;strip++) cout<<Sis2[strip]<<" ";
-    cout<<endl;
-    cout<<"Sis3 strips: ";
-    for(Int_t strip=0;strip<16;strip++) cout<<Sis3[strip]<<" ";
-    cout<<endl;
-    cout<<"Sis4 strips: ";
-    for(Int_t strip=0;strip<16;strip++) cout<<Sis4[strip]<<" ";
-    cout<<endl;
-    cout<<"energA = "<<b_energA<<endl;
-    cout<<"energSA = "<<b_energSA;
-    if(b_Ne20==1) cout<<"   --- breakup of Ne-20"<<endl; 
-    else if(b_O16==1) cout<<"   --- breakup of O-16"<<endl; 
-    else if(b_C12==1) cout<<"   --- breakup of C-12"<<endl; 
-    else if(b_Ne20p==1) cout<<"   --- breakup of Ne-20 into p + F-19"<<endl; 
-    cout<<"energSB = "<<b_energSB<<endl;
-    cout<<"energa = "<<b_energa<<"\t energaraw = "<<b_energaraw<<endl;
-    cout<<"energB = "<<b_energB<<"\t energBraw = "<<b_energBraw<<endl;
-    cout<<" *****************************************************"<<endl;
-    cout<<"Hagar energy (sumenerg) = "<<b_sumenerg<<"\t of gamma "<<b_gamraw<<" at E* = "<<b_energSA<<endl;
-    cout<<" *****************************************************"<<endl;
+    std::cout<<"\n ***************** PRINT EVENT ***********************"<<std::endl;
+    std::cout<<"N0 = "<<b_N0<<std::endl;
+    std::cout<<"Nbreak = "<<b_Nbreak<<std::endl;
+    std::cout<<"pos x0 = "<<posx<<" mm from gas cell face"<<std::endl;
+    std::cout<<"pos2 a = ("<<b_posxa<<", "<<b_posya<<") mm from gas cell face, middle"<<std::endl;
+    std::cout<<"pos2 B = ("<<b_posxB<<", "<<b_posyB<<") mm from gas cell face, middle"<<std::endl;
+    std::cout<<"hoeka = "<<b_hoeka<<std::endl;
+    std::cout<<"hoekB = "<<b_hoekB<<std::endl;
+    std::cout<<"Si1 = "<<b_Si1<<"\tSi2 = "<<b_Si2<<std::endl;
+    std::cout<<"Si3 = "<<b_Si3<<"\tSi4 = "<<b_Si4<<std::endl;
+    std::cout<<"Sis1 strips: ";
+    for(Int_t strip=0;strip<16;strip++) std::cout<<Sis1[strip]<<" ";
+    std::cout<<std::endl;
+    std::cout<<"Sis2 strips: ";
+    for(Int_t strip=0;strip<16;strip++) std::cout<<Sis2[strip]<<" ";
+    std::cout<<std::endl;
+    std::cout<<"Sis3 strips: ";
+    for(Int_t strip=0;strip<16;strip++) std::cout<<Sis3[strip]<<" ";
+    std::cout<<std::endl;
+    std::cout<<"Sis4 strips: ";
+    for(Int_t strip=0;strip<16;strip++) std::cout<<Sis4[strip]<<" ";
+    std::cout<<std::endl;
+    std::cout<<"energA = "<<b_energA<<std::endl;
+    std::cout<<"energSA = "<<b_energSA;
+    if(b_Ne20==1) std::cout<<"   --- breakup of Ne-20"<<std::endl; 
+    else if(b_O16==1) std::cout<<"   --- breakup of O-16"<<std::endl; 
+    else if(b_C12==1) std::cout<<"   --- breakup of C-12"<<std::endl; 
+    else if(b_Ne20p==1) std::cout<<"   --- breakup of Ne-20 into p + F-19"<<std::endl; 
+    else if(b_Ne20Be==1) std::cout<<"   --- breakup of Ne-20 into 8Be + 12C"<<std::endl; 
+    std::cout<<"energSB = "<<b_energSB<<std::endl;
+    std::cout<<"energa = "<<b_energa<<"\t energaraw = "<<b_energaraw<<std::endl;
+    std::cout<<"energB = "<<b_energB<<"\t energBraw = "<<b_energBraw<<std::endl;
+    std::cout<<" *****************************************************"<<std::endl;
+    std::cout<<"Hagar energy (sumenerg) = "<<b_sumenerg<<"\t of gamma "<<b_gamraw<<" at E* = "<<b_energSA<<std::endl;
+    std::cout<<" *****************************************************"<<std::endl;
     flag=1;     // this way print only 1 event!
 }
 //--------------- CHOOSE STATE -----------------------------------
 // selects a random item in array with "cent" elements
 Int_t choose_state(Int_t cent)
 {
-    int result=-1;
-    for(result<cent) {
-    	Float_t ran = 0.001*(rand()%1001);
-		result = int(cent*ran);
-		if(int(cent*ran)>cent) 
+  	float ran = 0.001*(rand()%1001);
     return int(cent*ran);
 }
 //---------------------------------------------------------------
@@ -1077,8 +1122,8 @@ void MCRoot(Float_t E0, Int_t pindx)
     b_gamraw=E0;	//stores initial gamma energy
     Edx=0.;
   
-	THETA=PI*0.01*(rand()%int(100.*THETA_MAX+1))/180.;    //gamma incident angle, theta (rad)
-	PHI=PI*0.01*(rand()%36001)/180.;                  //gamma incident angle, phi (rad)
+	THETA=PI*int(100.*THETA_MAX+1)*0.001*(rand()%1001)/180.;    //gamma incident angle, theta (rad)
+	PHI=PI*360*0.001*(rand()%1001)/180.;                  //gamma incident angle, phi (rad)
 	RHO=D*tan(THETA);                              //gamma incident radial position, rho
 
 	plength=WHERE(E0,3);      //path length inside detector
@@ -1108,7 +1153,7 @@ void MCRoot(Float_t E0, Int_t pindx)
 	Edx=0.;
 
 #ifdef LOG_FILE
-    if(logflag && b_Ngam<NG) {
+    if(b_Ngam<NG) {
     	fprintf(logfile, "Event: %d , gam evt: %d E* = %.3f MeV, gamma %.0f detected with Energy = %.0f keV \n", b_N0, b_Ngam, b_energSA, b_gamraw, b_sumenerg);
     	fprintf(logfile, "_________________________________________________________________________________ \n");
     }
@@ -1121,7 +1166,7 @@ void MCRoot(Float_t E0, Int_t pindx)
 //---------------------------INTERACT-----------------------------
 void INTERACT()
 {
-    float R, p_abs, p_foto, p_compt, p_paar, dEpaar, paarrho, paarx;       
+    float R, p_abs, p_foto, p_compt, p_paar, dEpaar, paarrho=0, paarx=0;       
 
     p_compt=1-exp(-MU(E,0,MuE)*plength);
     p_foto=1-exp(-MU(E,1,MuE)*plength);
@@ -1137,7 +1182,7 @@ void INTERACT()
         if(b_comp1==0) b_fot1=1;
         else b_fot2=1;
 #ifdef LOG_FILE
-  		if(logflag==1 && b_Ngam<NG) 
+  		if(b_Ngam<NG) 
     		fprintf(logfile, "foto abs.: E = %.0f (%d); numfoto = %d\n", E, b_annihal, numfoto);
 #endif
         Edx=Edx+convolv(E);   // sum energy within plength - convoluted, may also already contain... 
@@ -1174,7 +1219,7 @@ void INTERACT()
             // E-1022+511. If both absorbed - full energy deposited  - full energy peak.
         ++numpaar;	// new energy of (e-,e+) pair to be absorbed... or not. The e- takes ~half energy and is usually immediately absorbed and constitutes Edx. 
 #ifdef LOG_FILE
-        if(logflag && b_Ngam<NG) fprintf(logfile, "paar: E = %.0f; numpaar = %d\n", E, numpaar);
+        if(b_Ngam<NG) fprintf(logfile, "paar: E = %.0f; numpaar = %d\n", E, numpaar);
 #endif
 
         Edx=Edx+convolv((E-1022.)/2.);	 	// electron absorbed taking half the remainder (E0-1022):
@@ -1183,7 +1228,7 @@ void INTERACT()
         b_paar=Edx;
         paarx=dx;
         paarrho=rho_f;
-        BOOST(PI*0.01*(rand()%36001)/180., PI*0.01*(rand()%36001)/180.);	// 511 goes anywhere.
+        BOOST(PI*360*0.001*(rand()%1001)/180., PI*360*0.001*(rand()%1001)/180.);	// 511 goes anywhere.
         if(INSIDE) b_annihal=1;		// gamma 1 must still interact
         else {				// switch to gamma 2:
         	dx=paarx;		// back where the annihilation took place
@@ -1202,14 +1247,14 @@ float COMPTON()
 
     theta_f=gooi_dice_kn();	                //Klein-Nishina angular cross-section
     b_gthet=theta_f*180./PI;              //!! this overrides previous compt. scat. theta!!!
-    phi=PI*0.01*(rand()%36001)/180.;                //isotropic
+    phi=PI*360*0.001*(rand()%1001)/180.;                //isotropic
     Egam=E/(1.+E*(1.-cos(theta_f))/511.);       //scattered/secondary gamma energy
     Ee=E-Egam;                                  //energy deposited to electrons
 
     Edx=Edx+convolv(Ee);
     b_compt=Edx;    // CAREFULL!! - I'm overwriting previous comptons during multiple compt. scat.
 #ifdef LOG_FILE
-    if(logflag && b_Ngam<NG) {
+    if(b_Ngam<NG) {
     	fprintf(logfile, "compt. scatt. of %.0f (%d) at thet=%.2f deg, phi=%.2f deg; numcomp = %d\n", E, b_annihal, theta_f*180./PI, phi*180./PI, numcomp);
     	fprintf(logfile, "\tEgam out = %.0f keV (%d), %.0f keV deposited\n", Egam, b_annihal, Ee);         
     }
@@ -1231,12 +1276,12 @@ float gooi_dice_kn()        //hoek in radians
 	integral=integral+kn;
     }
     for(succ2=0; succ2!=1; ) {
-        thet_i=PI*0.01*(rand()%18001)/180.;              //random thet between 0 and pi radians     
+        thet_i=PI*180*0.001*(rand()%1001)/180.;              //random thet between 0 and pi radians     
         facto=1.+E*(1.-cos(thet_i))/511.;
         Ykn=pow((1./facto),2)*(facto+(1./facto)-pow(sin(thet_i),2))/integral;
         Rkn=0.001*(rand()%1001);
         if(Rkn <= Ykn) succ2=1;
-        else ;
+        else {};
     }
     return thet_i;
 }
@@ -1270,7 +1315,7 @@ float convolv(float imu)
         Yg=1.*exp(-pow((Xg-imu)/(0.6006*Res),2.0));       //gauss function normalised to 1
         rg=0.001*(rand()%1001);
         if(rg <= Yg) succ=1;
-        else ;
+        else {};
     }
     return Xg;
 }
@@ -1304,7 +1349,7 @@ float MU(float iEmu, int type, float *MuE)
         return (MM*iEmu+CC)*DENS;        //interpolated linear attenuation coeff.
      }
      else { 
-        cout<<"problem in MU().... no coefficient found!!"<<endl;
+        std::cout<<"problem in MU().... no coefficient found!!"<<std::endl;
         return 1000000.;
      }
   }
