@@ -10,3 +10,10 @@ Things to do:
 	root[] .L Ne20_gascell.C 
 	root[] ne20_gascell(NN) (default: NN=20000 , where NN is number of repeats / incident projectiles, e.g. ne20_gascell(20000)
 
+
+
+root [12] DATA->Draw("SiData->HitPos[1]:SiData->HitPos[0]>>h04(500,0,160,500,-35,35)","","col")	// all hits at Si faces, actually hitting the Si detectors
+root [10] DATA->Draw("pos1xy[1]:pos1xy[0]>>h03(500,0,160,500,-35,35)","","colsame")
+
+root [3] DATA->Draw("pos2y[0]:pos2x[0]>>h06(500,0,160,500,-35,35)","","col")	// all hits at Si faces, but not necessarily hitting the Si detectors
+
