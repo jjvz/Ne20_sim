@@ -165,7 +165,7 @@ void MCRoot(Float_t Egam0, Int_t pindx, myDetData *gam, std::string loglable)
 	}
 	if(Edx>0.) {
 		gam->SetEnergy(Edx);	
-
+   
 		h_GamMca->Fill(Edx);
 	}
 

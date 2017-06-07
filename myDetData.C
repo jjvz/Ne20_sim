@@ -49,29 +49,11 @@ std::vector<double> myDetData::GetHitPos(int pos)
 
 unsigned int myDetData::SizeOfEvent(char c)
 {
-  if(c=='p') {
-    	unsigned int result = HitPos.size();
-  	return result;
-  }
-  else if(c=='e') { 
-  	unsigned int result = DetEnergy.size();
-  	return result;
-  }
-  else if(c=='s') { 
-  	unsigned int result = DetChan.size();
-  	return result;
-  }
-  else if(c=='c') { 
-  	unsigned int result = ChanPos.size();
-  	return result;
-  }
-  else if(c=='d') { 
-  	unsigned int result = DetNr.size();
-  	return result;
-  }
-  else { 
-  	unsigned int result = DetEnergy.size();
-  	return result;
-  }
+  if(c=='p') { return HitPos.size(); }
+  else if(c=='e') { return DetEnergy.size(); }
+  else if(c=='s') { return DetChan.size(); }
+  else if(c=='c') { return ChanPos.size(); }
+  else if(c=='d') { return DetNr.size(); }
+  else { return DetEnergy.size(); }
 }
 

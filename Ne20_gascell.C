@@ -73,21 +73,19 @@
 #define plotlable "gascell_draw.dat"
 
 #define PRNT_DIAG		//uncomment to print scatter diagram 
-#define DIAG_FILE		//uncomment to write diagnosis file - this may slow down code !!!! 
+//#define DIAG_FILE		//uncomment to write diagnosis file - this may slow down code !!!! 
 
 FILE *gamfile1; 
 FILE *gamfile2; 
 FILE *gamfile3; 
-
-extern int countp, countpn;
 
 const int nSi=4;
 const int n_si_det=4;
 const int n_si_ch=16;
 const int n_gam_det=1;
 const int n_gam_ch=7;
-const int NN   = 20000;	// number of event iterations 
-const int PRNT = 20000;	// number of scatter events to plot in diagram
+const int NN   = 200000;	// number of event iterations 
+const int PRNT = 2000;	// number of scatter events to plot in diagram
 // INPUT:
 const double E0=200.0 ;        // [in MeV]
 const double THscat=0.0 ;          // outgoing angle of ejectile [in deg]
@@ -102,6 +100,7 @@ const double p_Ne20s1=0.333;	// probability for 20Ne -> a1 + 16O*
 const double p_Ne20s2=0.333;	// probability for 20Ne -> a2 + 16O*
 const double p_Ne20Bes0=0.667;	// probability for 20Ne -> a0 + 16Og.s.
 const float  XFWHM = 0.08;		// fwhm (in MeV) of focal plane x-axis
+const float  SiFWHM = 0.25;		// fwhm (in MeV) of Si-detectorts
 
 const int numlines1=69;		// # states for Ne20 datfile
 const int numlines2=14;	// # states for O16 datfile
@@ -151,30 +150,29 @@ std::vector<float> get_xy(float x, float y ,float a, myDetData *si);
 float E_REL(float ec, float ed, float tc, float td);
 void set_si_det(myDetData *si, float x, float y, float a, float en);
 
-/*-- GLOBAL DECLARATIONS --------------------------------------------*/
-//Float_t x2b, x2c, x2d, y2b, y2c, y2d; 	
-//Float_t cx2b, cx2c, cx2d, cy2b, cy2c, cy2d; 	
+/*-- GLOBAL DECLARATIONS --------------------------------------------*/	
 Float_t I[30];
 Int_t   counterj;		
 Char_t  flagt, IN[28], lable[28];
-Float_t m_b, m_B, E_tot, p_A, p_b, p_B, E_b=0., E_B, E_rel=-1., E_c, E_d;
+Float_t m_b, m_B, p_A, p_b, p_B;
 std::vector<float> pos1xy;
 std::vector<float> pos2x;
 std::vector<float> pos2y;
 std::vector<float> thet2;
 std::vector<float> rawE;
+std::vector<float> mass;
 std::vector<float> Erel;
+std::vector<float> En;
+std::vector<float> Qsep;
 Int_t cnt=0, ti, flag=0;
 float *breakdat;
 bool INSIDE = true;
 bool hit = false;
 
 // ROOT TREE VARIABLE
-Int_t b_N0=-10, b_Nbreak=-10, b_Si1=0, b_Si2=0, b_Si3=0, b_Si4=0, b_Si5=0, b_Si6=0;
-Int_t Sis1[16], Sis2[16], Sis3[16], Sis4[16], Sis5[16], Sis6[16];
-Float_t b_energA=-10., b_energSA=-10., b_Ex=-10., b_energSB=-10., b_hoekb=-10., b_hoekB=-10.;
-Float_t b_rawE=-10., b_posxb=0, b_posxB=0, b_posyb=0, b_posyB=0;
-Float_t energy[4], hoek[2], StripPos[50][2], b_Xpos=-1, b_Qsep=0.;
+Int_t b_N0=-10, b_Nbreak=-10;
+Float_t b_energA=-10., b_energSA=-10., b_Ex=-10., b_energSB=-10.;
+Float_t b_Xpos=-1;
 Int_t b_Ne20=0, b_O16=0, b_C12=0, b_Ne20p=0, b_Ne20Be=0, b_spn=0;
 
 /*
@@ -217,23 +215,17 @@ int ne20_gascell()
 //	gROOT->ProcessLine(".L my_si_data.C++");
 
     Int_t miss, i, j, p, Nj, numscat=0, nummis=0, ind=0, indx;
-    Float_t rg, x1, y1, x2B, y2B, x2b, y2b, y_si1, y_si2, z1, z2, ran, ran2, ran3, ran4;
-    Float_t cx1, cy1, cx2b, cy2b, cx2B, cy2B;
+	Int_t b_evntno=0;
+    Float_t rg, x1, y1, z2, ran, ran2, ran3, ran4;
+    Float_t cx1, cy1;
     Float_t rgE, rgGam, rgE2, Estar_A=0, Estar_B, S_b, m_A, m_c=0, m_d=0, S_2a;
-    Float_t Si1x0, Si1x1, Si2x0, Si2x1, Si3x0, Si3x1;
-    Float_t Sis1x0[16], Sis1x1[16], Sis2x0[16], Sis2x1[16], Sis3x0[16], Sis3x1[16];
-    Float_t energ_b, energ_B, E_A, thet_b, thet_c=0, thet_d=0, thet_B, phi, PHI_MAX, Xposition, thet_max, THET_MAX, Erel_tmp=-1;
+    Float_t E_A, thet_b, thet_c=0, thet_d=0, thet_B, phi, PHI_MAX, Xposition, thet_max, THET_MAX, Erel_tmp=-1;
+	Float_t E_b=-1., E_B=-1.0, E_c=-1.0, E_d=-1.0;
 	Float_t thet_in=0;
 	std::vector<float> pos_tmp;
-
-	countp=0;
-	countpn=0;
-
 	bool lyn0=true;
     Char_t  buff[1000];
 
-	Int_t evt, b_evntno=0, b_si_det=0;
-	Float_t Epeak=8.007;
 	
 #ifdef DIAG_FILE
     std::ofstream diagfile;
@@ -290,23 +282,14 @@ int ne20_gascell()
 	t1->Branch("GamData","myDetData",&gam);
     t1->Branch("N0",&b_N0,"b_N0/I");
     t1->Branch("Nbreak",&b_Nbreak,"b_Nbreak/I");
-    t1->Branch("Si1",&b_Si1,"b_Si1/I");
-    t1->Branch("Si2",&b_Si2,"b_Si2/I");
-    t1->Branch("Si3",&b_Si3,"b_Si3/I");
-    t1->Branch("Si4",&b_Si4,"b_Si4/I");
-    t1->Branch("Sis1",Sis1,"Sis1[16]/I");
-    t1->Branch("Sis2",Sis2,"Sis2[16]/I");
-    t1->Branch("Sis3",Sis3,"Sis3[16]/I");
-    t1->Branch("Sis4",Sis4,"Sis4[16]/I");
     t1->Branch("energA",&b_energA,"b_energA/F");
     t1->Branch("energSA",&b_energSA,"b_energSA/F");
-    t1->Branch("Qsep",&b_Qsep,"b_Qsep/F");
+    t1->Branch("Qsep",&Qsep);
     t1->Branch("Erel",&Erel);
     t1->Branch("Ex",&b_Ex,"b_Ex/F");
     t1->Branch("energSB",&b_energSB,"b_energSB/F");
     t1->Branch("rawE",&rawE);
-    t1->Branch("hoekb",&b_hoekb,"b_hoekb/F");
-    t1->Branch("hoekB",&b_hoekB,"b_hoekB/F");
+    t1->Branch("mass",&mass);
     t1->Branch("pos1xy",&pos1xy);
     t1->Branch("pos2x",&pos2x);
     t1->Branch("pos2y",&pos2y);
@@ -320,27 +303,20 @@ int ne20_gascell()
     
     TH1F *hX1pos = new TH1F("hX1pos","Simulated FP position spectrum; position, x (mm); counts",2000,0,800);
     TH1F *hx0 = new TH1F("hx0","x0 of original breakup",500,0,1.1*L);
-    TH1F *hcx0 = new TH1F("hcx0","x0 of original breakup on canvas dimentions",500,0,1);
     TH1F *hE = new TH1F("hE","Energy of breakup particles; Energy [MeV]; counts",200,0,20);
     TH1F *hEx = new TH1F("hEx","Excitation energy spectrum; E_{x} [MeV]",2000,0,30);
     TH1F *hQsep = new TH1F("hQsep","Separation Q-value of breakup; Energy [MeV]; counts",500,-30.,30.);
     TH1F *hErel = new TH1F("hErel","Relative kinetic energy of breakup particles; Energy [MeV]; counts",1000,0.,30.);
     TH2F *hE_bB = new TH2F("hE_bB","Energy_#alpha vs. Energy_B; E_B [MeV]; E_#alpha [MeV]",2000,0,20,2000,0,20);
-    TH2F *hEvsThet = new TH2F("hEvsThet","Energy vs. Scattering angle",720,0,360,199,0,20);
+    TH2F *hEvsThet = new TH2F("hEvsThet","Energy vs. Scattering angle; #theta [deg]; E [MeV]",720,0,360,199,0,20);
     TH2F *hESivsEx = new TH2F("hESivsEx","Energy in Si's vs. Excitation Energy; E_{x} [MeV]; E_{Si} [keV]",2000,0,30,1000,0,20000);
     TH2F *hESivsXpos = new TH2F("hESivsXpos","Energy in Si's vs. FP position; Position [mm]; E_{Si} [keV]",2000,0,800,1000,0,20000);
-    TH2F *hEvsThet180 = new TH2F("hEvsThet180","Energy vs. Scattering angle",360,0,180,199,0,20);
-    TH2F *hThetbVsThetB = new TH2F("hThetbVsThetB","#theta_#alpha vs. #theta_B",360,0,180,360,0,180);
+    TH2F *hEvsThet180 = new TH2F("hEvsThet180","Energy vs. Scattering angle; #theta [deg]; E [MeV]",360,0,180,199,0,20);
+    TH2F *hThetbVsThetB = new TH2F("hThetbVsThetB","#theta_#alpha vs. #theta_B; #theta_B [deg]; #theta #alpha [deg]",360,0,360,360,0,360);
     TH2F *hEHagarvsEx = new TH2F("hEHagarvsEx","Energy in Hagar vs. Excitation Energy; E_{x} [MeV]; E_{Hagar} [keV]",2000,0,30,1800,0,18000);
 
     gStyle->SetOptStat(kFALSE);
-    hEvsThet->GetXaxis()->SetTitle("#theta [deg]");
-    hEvsThet->GetYaxis()->SetTitle("E [MeV]");
-    hEvsThet180->GetXaxis()->SetTitle("#theta [deg]");
-    hEvsThet180->GetYaxis()->SetTitle("E [MeV]");
     hEvsThet180->GetYaxis()->SetTitleOffset(1.5);
-    hThetbVsThetB->GetXaxis()->SetTitle("#theta_B [deg]");
-    hThetbVsThetB->GetYaxis()->SetTitle("#theta #alpha [deg]");
     
 // ******************** Detector setup ********************************************************
 //*********************************************************************************************    
@@ -504,45 +480,8 @@ int ne20_gascell()
 		}			// si det. 1, strip 1-16 (x0)
 	}
 
-//----------------------------------------------------------------------------
-// Subdivide Si's into 16 strips each, 3mm wide IN TERMS OF CANVAS DIMENTIONS:
-    memset(&StripPos, 0, sizeof(StripPos));
-
-	Sis1x0[0]=Si1box.sx0;
-	Sis1x1[0]=Sis1x0[0]+cSiSW;
-	for(Int_t strip=1;strip<16;strip++) {
-		Sis1x0[strip]=Sis1x1[strip-1]+cSiSSep;
-		Sis1x1[strip]=Sis1x0[strip]+cSiSW;
-	}
-//	printf("\nSi1/3 strips:\n");         
-	for(Int_t strip=0;strip<16;strip++) {
-		StripPos[strip][0]=Sis1x0[strip];
-		StripPos[strip][1]=Sis1x1[strip];
-//		printf("%3.0f ", (StripPos[strip][0]-cOrgx)/Lconv);         
-	}      
-	Sis2x0[0]=Si2box.sx0;
-	Sis2x1[0]=Sis2x0[0]+cSiSW;
-	for(Int_t strip=1;strip<16;strip++) {
-		Sis2x0[strip]=Sis2x1[strip-1]+cSiSSep;
-		Sis2x1[strip]=Sis2x0[strip]+cSiSW;
-	}
-	StripPos[16][0]=Si1box.sx1;        // Gap between Si 1 and 2
-	StripPos[16][1]=Si2box.sx0;
-//	printf("\nSi2/4 strips:\n");         
-	for(Int_t strip=0;strip<16;strip++) {
-		StripPos[17+strip][0]=Sis2x0[strip];
-		StripPos[17+strip][1]=Sis2x1[strip];
-//		printf("%3.0f ", (StripPos[17+strip][0]-cOrgx)/Lconv);         
-	}      
-    memset(&Sis1, 0, sizeof(Sis1));
-    memset(&Sis2, 0, sizeof(Sis2));
-    memset(&Sis3, 0, sizeof(Sis3));
-    memset(&Sis4, 0, sizeof(Sis4));
-
-    std::cout << std::endl;
-
-//    double rn[4];
-
+	std::cout<<std::endl;
+	
 // ********************* 20Ne states: ***********************************   
     Float_t cent1[numlines1], gam1[numlines1][3], gamI1[numlines1][3];
 //    Float_t sig1[18]={0.657,0.362,0.51,0.14,0.143,0.12,0.123,0.692,0.581,0.726,0.695,0.976,0.252,0.304,
@@ -648,7 +587,6 @@ int ne20_gascell()
 
 		cx1 = cOrgx + x1*Lconv;     	// x-pos of breakup (rel. to left side of Canvas)
 		cy1 = cOrgy + y1*Hconv;
-		hcx0->Fill(cx1);
     
 // **************************************************************************************
 // ********************* choose E* of tgt ***********************************************
@@ -836,11 +774,10 @@ int ne20_gascell()
 		else if(b_C12==1) b_Ex = noise(Estar_A,(1-width3[indx])*XFWHM/2.35);	//b_Ex is now broadened statistically
 		hEx->Fill(b_Ex);
 
-//		hEHagarvsEx->Fill(b_Ex,b_gamEnerg[0]);  // here Ex are correct, but may miss showing a few gammas!     
-//		hEHagarvsEx->Fill(b_Ex,b_gamEnerg[1]);  // here Ex are correct, but may miss showing a few gammas!     
-//		hEHagarvsEx->Fill(b_Ex,b_gamEnerg[2]);  // here Ex are correct, but may miss showing a few gammas!     
-
-		//	hEHagarvsEx->Fill(b_Ex,b_sumenerg);  // here Ex are correct, but may miss showing a few gammas!     
+// DATA->Draw("GamData->DetEnergy:Ex>>hEHagarvsEx","","col");
+		for ( int gi=0; gi<gam->SizeOfEvent('e'); gi++ ) {
+			hEHagarvsEx->Fill(b_Ex,gam->GetEnergy(gi));  // here Ex are correct, but may miss showing a few gammas!     
+		}
 		//	ZeroTTreeVariablesMC();
 		// Now fill FP position spectrum (wih calibration)
 		//    Xposition = -0.2012*Estar_A*Estar_A - 26.31*Estar_A + 911.35;
@@ -864,6 +801,8 @@ int ne20_gascell()
 		thet_b = breakdat[4]; // Breakup angle of one ion (anti-CLOCKwise from +x-axis) [radians]
 		thet_B = breakdat[5]; // Breakup angle of second ion (CLOCKwise from +x-axis) [radians]
 		thet_max = breakdat[6]; 
+
+		hThetbVsThetB->Fill( thet_B*180./PI, thet_b*180./PI );  // NB! angle_B is stil CLOCKwise from +x-axis
 
 		thet_B = 2.*PI - thet_B;     // NB! Now convert All second particle angles to ANTI-clockwise from +x-axis
 		//	thet_B = noise(thet_B,5.*PI/180.); // ~1mm Si strip width -> ~1 deg
@@ -898,6 +837,22 @@ int ne20_gascell()
 			thet_d = breakdat[5]; // Breakup angle of heavy ion (CLOCKwise from +x-axis) [radians]
 			thet_max = breakdat[6]; // Breakup angle of heavy (16O) ion (CLOCKwise from +x-axis) [radians]
 
+			mass.push_back(m_c);
+			mass.push_back(m_d);
+			mass.push_back(m_B);
+
+		    rawE.push_back(E_c);   // E without noise!
+		    rawE.push_back(E_d);   // E without noise!
+		    rawE.push_back(E_B);   // E without noise!
+
+		    En.push_back(noise(E_c, SiFWHM/2.35));   // E WITH noise!
+		    En.push_back(noise(E_d, SiFWHM/2.35));   // E WITH noise!
+		    En.push_back(noise(E_B, SiFWHM/2.35));   // E WITH noise!
+
+			Erel_tmp = E_REL(En.at(0), En.at(1), thet_c, thet_d); 
+			Erel.push_back(Erel_tmp); 
+	        hErel->Fill(Erel_tmp);    
+
 /*
 			#ifdef DIAG_FILE
 				diagfile<<"\n*********** Event: "<< Nj <<" ****************************\n";
@@ -914,10 +869,6 @@ int ne20_gascell()
 				diagfile<<" thet2_C = "<<atan((breakdat[1]/m_d*sin(breakdat[5]))/(p_b/m_b-breakdat[1]/m_d*cos(breakdat[5])))*180./PI<<" deg\n";	// [V0 - v2 cos(thet1)]/v1
 			#endif 
 */
-			Erel_tmp = E_REL(E_c, E_d, thet_c, thet_d); 
-			Erel.push_back(Erel_tmp); 
-	        hErel->Fill(Erel_tmp);    
-//			std::cout<<"\n******************** E_b= "<<E_b<<"\t m_b="<<m_b<<"\n";
 
 			thet_c = thet_b + thet_c;
 			thet_d = thet_b - thet_d;
@@ -926,21 +877,17 @@ int ne20_gascell()
 			thet2.push_back(thet_d);
 			thet2.push_back(thet_B);
 
-		    rawE.push_back(E_c);   // E without noise!
-		    rawE.push_back(E_d);   // E without noise!
-		    rawE.push_back(E_B);   // E without noise!
 /*
 			#ifdef DIAG_FILE
 				diagfile<<" thet_c = "<<thet_c*180./PI<<" deg\n";
 				diagfile<<" thet_d = "<<thet_d*180./PI<<" deg\n";
-				diagfile<<" E_rel = "<<Erel.at(0)<<" MeV\n";
 			#endif 
 */
 			for ( int i=0;i<thet2.size();i++ ) {
 				pos_tmp = get_xy(x1,y1,thet2.at(i), si);	// <pos> is cleared inside function 
-				set_si_det(si, pos_tmp.at(0), pos_tmp.at(1), thet2.at(i), noise(rawE.at(i), 0.15));
+				set_si_det(si, pos_tmp.at(0), pos_tmp.at(1), thet2.at(i), En.at(i));
 				pos2x.push_back(pos_tmp.at(0));
-				pos2y.push_back(pos_tmp.at(1));
+				pos2y.push_back(pos_tmp.at(1)); 
 			}
 //			std::cout<<"\n******************** size of chan evt = "<<si->SizeOfEvent('s')<<"\n";
 		}
@@ -955,10 +902,21 @@ int ne20_gascell()
 			thet_c = breakdat[4]; // Breakup angle of heavy ion (CLOCKwise from +x-axis) [radians]
 			thet_d = breakdat[5]; // Breakup angle of heavy ion (CLOCKwise from +x-axis) [radians]
 
-			Erel_tmp = E_REL(E_c, E_d, thet_c, thet_d); 
+			mass.push_back(m_b);
+			mass.push_back(m_c);
+			mass.push_back(m_d);
+
+		    rawE.push_back(E_b);   // E without noise!
+		    rawE.push_back(E_c);   // E without noise!
+		    rawE.push_back(E_d);   // E without noise!
+
+		    En.push_back(noise(E_b, SiFWHM/2.35));   // E WITH noise!
+		    En.push_back(noise(E_c, SiFWHM/2.35));   // E WITH noise!
+		    En.push_back(noise(E_d, SiFWHM/2.35));   // E WITH noise!
+
+			Erel_tmp = E_REL(En.at(1), En.at(2), thet_c, thet_d); 
 			Erel.push_back(Erel_tmp); 
 	        hErel->Fill(Erel_tmp);    
-//			std::cout<<"\n***********c12 erel = "<<Erel.at(0)<<"\tE_c= "<<E_c<<"\t E_d="<<E_d<<"\tE_B= "<<E_B<<"\t m_B="<<m_B<<"\n";
 
 			thet_c = thet_B + thet_c;
 			thet_d = thet_B - thet_d;
@@ -967,13 +925,9 @@ int ne20_gascell()
 			thet2.push_back(thet_c);
 			thet2.push_back(thet_d);
 
-		    rawE.push_back(E_b);   // E without noise!
-		    rawE.push_back(E_c);   // E without noise!
-		    rawE.push_back(E_d);   // E without noise!
-
 			for ( int i=0;i<thet2.size();i++ ) {
 				pos_tmp = get_xy(x1,y1,thet2.at(i), si); 
-				set_si_det(si, pos_tmp.at(0), pos_tmp.at(1), thet2.at(i), noise(rawE.at(i), 0.15));	// push_back element for b
+				set_si_det(si, pos_tmp.at(0), pos_tmp.at(1), thet2.at(i), En.at(i));	// push_back element for b
 				pos2x.push_back(pos_tmp.at(0));
 				pos2y.push_back(pos_tmp.at(1));
 			}
@@ -981,21 +935,29 @@ int ne20_gascell()
 //			std::cout<<"\n************* thet2.size(): "<<thet2.size()<<", # chan hits: "<<si->SizeOfEvent('s')<<"\n";
 		}
 		else {
-			Erel_tmp = E_REL(E_b, E_B, thet_b, thet_B); 
-			Erel.push_back(Erel_tmp); 
-	        hErel->Fill(Erel_tmp);    
-			thet2.push_back(thet_b);
-			thet2.push_back(thet_B);
+			mass.push_back(m_b);
+			mass.push_back(m_B);
 
 		    rawE.push_back(E_b);   // E without noise!
 		    rawE.push_back(E_B);   // E without noise!
 
+		    En.push_back(noise(E_b, SiFWHM/2.35));   // E WITH noise!
+		    En.push_back(noise(E_B, SiFWHM/2.35));   // E WITH noise!
+
+			Erel_tmp = E_REL(En.at(0), En.at(1), thet_b, thet_B); 
+			Erel.push_back(Erel_tmp); 
+	        hErel->Fill(Erel_tmp);    
+
+			thet2.push_back(thet_b);
+			thet2.push_back(thet_B);
+
 			for ( int i=0;i<thet2.size();i++ ) {
 				pos_tmp = get_xy(x1,y1,thet2.at(i), si); 	// determines the hit pos. on si detectors
-				set_si_det(si, pos_tmp.at(0), pos_tmp.at(1), thet2.at(i), noise(rawE.at(i), 0.15));	// fills si det. structure, etc. - only valid si det. hits
+				set_si_det(si, pos_tmp.at(0), pos_tmp.at(1), thet2.at(i), En.at(i));	// fills si det. structure, etc. - only valid si det. hits
 				pos2x.push_back(pos_tmp.at(0));
 				pos2y.push_back(pos_tmp.at(1));
 			}
+			hE_bB->Fill(En.at(1),En.at(0));
 		}
 
 // **************************************************************************************
@@ -1011,33 +973,25 @@ int ne20_gascell()
 		}
 		z2 = SiSepY1*tan(phi);
 
-// Adding some statistical noise to Si detector position and energy:
-// **************************************************************
-//    x2b = x2b + noise(0., 1.)*Lconv;     // simulate discrete Si strip resolution, noise in [mm]
-//    x2B = x2B + noise(0., 1.)*Lconv;
-// I should actually here recalculate thet_b and thet_B with included uncertainty/noise 
-// in x2b and x2B..., but I prefer to add noise to thet_B so I don't have to recalc. the x2b's! 
-// **************************************************************************************
-// *********************** Find Si strips triggered: ************************************          
-// **************************************************************************************
-// All this does not fill unless the strip routine completed successfully!!!! 
         numscat++; 
-
         b_Xpos = Xposition;
-						
-// ******************** angle_B still CLOCKwise from +x axis, angle_b < 180 deg: ***************
-//        if(thet_b>PI) b_hoekb = 360 - thet_b*180./PI;
-//        else b_hoekb = thet_b*180./PI;
-		b_hoekb = thet2.at(0)*180./PI;
+        b_Nbreak = numscat;     
+        b_energA = E_A;
+// ************ note I convert to keV for Si energies to compare with experiment ***************
+		for(Int_t ii=0; ii < si->SizeOfEvent('e'); ii++){
+		    hESivsEx->		Fill(b_Ex,si->GetEnergy(ii)*1000.);
+		    hESivsXpos->	Fill(Xposition,si->GetEnergy(ii)*1000.);
+	        hEvsThet->		Fill(si->GetTheta(ii),si->GetEnergy(ii));       // NB! angle_b is 0 - 360 deg.
+	        hEvsThet180->	Fill(si->GetTheta(ii),si->GetEnergy(ii));   // NOTE angle_b is now only from 0 - 180 deg!
+	        hE->			Fill(si->GetEnergy(ii));
 
-//        if(thet_B<0) b_hoekB = -thet_B*180./PI;      // only positive angles_B and a
-//        else b_hoekB = thet_B*180./PI;      // only positive angles_B and a
-        b_hoekB = thet2.at(1)*180./PI;      // only positive angles_B and a
+			Qsep.push_back(si->GetEnergy(ii)*1.25024223 - b_Ex);	// energies in MeV
+			hQsep->			Fill(Qsep.at(ii));  
+		}
+        
+        t1->Fill();         // I fill t1 here to record only valid events.
 
-// ******************** angle_B now ANTI-clockwise from +x axis: ******
-//        if(thet_B<=0) thet_B = -1.*thet_B;     // NB! All angles ANTI-clockwise from +x-axis
-//        else if(thet_B>0) thet_B = 2*PI - thet_B;     // NB! All angles ANTI-clockwise from +x-axis
-//        thet_B = 2*PI - thet_B;     // NB! All angles ANTI-clockwise from +x-axis
+        if(numscat==1234 && flag==0) print_evt(si);
 
 		#ifdef PRNT_DIAG
 //		std::cout<<"\n******************** size of thet evt = "<<thet2.size()<<"\n";
@@ -1067,34 +1021,6 @@ int ne20_gascell()
 		}    
 		#endif
 
-// ************ note I convert to keV for Si energies to compare with experiment ***************
-
-        b_Nbreak = numscat;     
-        b_energA = E_A;
-        b_Qsep = E_b*1.25024223 - b_Ex;	// energies in MeV
-
-        hESivsEx->		Fill(b_Ex,E_b*1000.);
-        hESivsEx->		Fill(b_Ex,E_B*1000.);
-        hESivsEx->		Fill(b_Ex,E_c*1000.);
-        hESivsEx->		Fill(b_Ex,E_d*1000.);
-        hESivsXpos->	Fill(Xposition,E_b*1000.);
-        hESivsXpos->	Fill(Xposition,E_B*1000.);
-        hESivsXpos->	Fill(Xposition,E_c*1000.);
-        hESivsXpos->	Fill(Xposition,E_d*1000.);
-
-		for(int i=0; i < si->SizeOfEvent('e');i++){
-	        hEvsThet->Fill(si->GetTheta(i),si->GetEnergy(i));       // NB! angle_b is 0 - 360 deg.
-	        hEvsThet180->Fill(si->GetTheta(i),si->GetEnergy(i));   // NOTE angle_b is now only from 0 - 180 deg!
-	        hE->Fill(si->GetEnergy(i));
-		}
-        hThetbVsThetB->Fill(b_hoekB,b_hoekb);  // NB! angle_B is still CLOCKwise from +x-axis
-        hE_bB->Fill(E_B,E_b);
-        hQsep->Fill(b_Qsep);  
-        
-        t1->Fill();         // I fill t1 here to record only valid events.
-
-        if(numscat==1234 && flag==0) print_evt(si);
-
 		#ifdef DIAG_FILE
 			diagfile<<"\n\n*********** Event: "<< Nj <<" ****************************\n";
 			diagfile<<" ------------- Breakup of ";
@@ -1111,26 +1037,16 @@ int ne20_gascell()
 			for(int i=0; i<pos2x.size();i++) {
 				diagfile<<"pos2 = ("<<pos2x.at(i)<<", "<<pos2y.at(i)<<") mm, breakup angle = "<<thet2.at(i)*180./PI<<" deg\n";
 			}
-//			diagfile<<std::endl;
 			for(int i=0; i < si->SizeOfEvent('d');i++){
 				diagfile<<"Si "<<si->GetHitDet(i)<<", strip "<<si->GetHitChan(i)<<", E = "<<si->GetEnergy(i)<<" MeV (E_raw = "<<rawE.at(i)<<" MeV)" <<std::endl;
 			}
 		#endif 
-
-
-
 
 	}  // end of event
 //**********************************************************************************************************************	
 //**********************************************************************************************************************	
 
 	std::cout<< "\nNumber scattered: "<< numscat << "/"<<NN<<" ("<<100*numscat/NN<<"%)\n"<<std::endl;
-
-	//  c2->cd(1);
-	//  hE_bB->Draw("col");  
-	//  c2->cd(2);
-	//  hEvsThet180->Draw("col"); 
-	//  c2->Update();
 
 	#ifdef DIAG_FILE
 	  diagfile.close();
@@ -1174,20 +1090,15 @@ void ZeroTTreeVariables()
 	pos2y.clear();
 	thet2.clear();
 	rawE.clear();
+	En.clear();
  	Erel.clear();
-    b_posxb=0;
-    b_posxB=0;
-    b_posyb=0;
-    b_posyB=0;
+ 	Qsep.clear();
+	mass.clear();
     b_Ne20=0;
     b_O16=0;
     b_C12=0;
     b_Ne20p=0;
     b_Ne20Be=0;
-    b_Qsep=0;
-    E_c=0;
-    E_d=0;
-    E_rel=0;
     hit = false;
 }
 
